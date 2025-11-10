@@ -1,4 +1,4 @@
-import { chromium, firefox, webkit, Browser, BrowserContext, Page } from '@playwright/test';
+import { chromium, firefox, webkit, Browser, BrowserContext, Page } from 'playwright';
 import { ExecuteTestDTO, TestExecutionResult } from '../models/types';
 import pool from '../config/database';
 import logger from '../config/logger';
@@ -110,10 +110,140 @@ export class PlaywrightExecutor {
 
       // Update execution record in database
       await pool.query(
-        `UPDATE test_executions 
-         SET status = $1, end_time = CURRENT_TIMESTAMP, duration_ms = $2, 
+        `UPDATE test_executions
+         SET status = $1, end_time = CURRENT_TIMESTAMP, duration_ms = $2,
              error_message = $3, screenshot_path = $4
          WHERE id = $5`,
         [result.status, result.duration_ms, result.error_message || null, result.screenshot_path || null, executionId]
       );
     }
+
+    return result;
+  }
+
+  /**
+   * Run test script
+   */
+  private async runTestScript(script: string, page: Page): Promise<void> {
+    // Create an async function from the script
+    const testFunction = new Function('page', 'expect', `
+      return (async () => {
+        ${script}
+      })();
+    `);
+
+    // Execute the test script
+    await testFunction(page, null);
+  }
+
+  /**
+   * Capture screenshot
+   */
+  private async captureScreenshot(testCaseId: string): Promise<string> {
+    const screenshotDir = path.join(process.cwd(), 'uploads', 'screenshots');
+
+    // Ensure directory exists
+    await fs.mkdir(screenshotDir, { recursive: true });
+
+    const filename = `${testCaseId}-${uuidv4()}.png`;
+    const filepath = path.join(screenshotDir, filename);
+
+    if (this.page) {
+      await this.page.screenshot({ path: filepath, fullPage: true });
+      logger.info(`📸 Screenshot saved: ${filepath}`);
+    }
+
+    return filepath;
+  }
+
+  /**
+   * Close browser
+   */
+  async closeBrowser(): Promise<void> {
+    try {
+      if (this.context) {
+        await this.context.close();
+      }
+      if (this.browser) {
+        await this.browser.close();
+      }
+      logger.info('✅ Browser closed successfully');
+    } catch (error) {
+      logger.error('❌ Error closing browser:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Cleanup resources (alias for closeBrowser)
+   */
+  async cleanup(): Promise<void> {
+    await this.closeBrowser();
+  }
+
+  /**
+   * Execute entire test suite
+   */
+  async executeTestSuite(suiteId: string, options: ExecuteTestDTO): Promise<TestExecutionResult[]> {
+    const results: TestExecutionResult[] = [];
+
+    try {
+      // Fetch all test cases in the suite
+      const casesQuery = await pool.query(
+        'SELECT * FROM test_cases WHERE suite_id = $1 ORDER BY created_at',
+        [suiteId]
+      );
+
+      if (casesQuery.rows.length === 0) {
+        logger.warn(`No test cases found in suite ${suiteId}`);
+        return results;
+      }
+
+      logger.info(`Executing ${casesQuery.rows.length} test cases in suite ${suiteId}`);
+
+      // Initialize browser once for all tests
+      await this.initBrowser(options.browser || 'chromium', options.headless ?? true);
+
+      // Execute each test case
+      for (const testCase of casesQuery.rows) {
+        try {
+          // Create execution record
+          const executionResult = await pool.query(
+            `INSERT INTO test_executions (test_case_id, suite_id, status, browser, environment)
+             VALUES ($1, $2, 'pending', $3, $4)
+             RETURNING id`,
+            [testCase.id, suiteId, options.browser || 'chromium', options.environment || 'test']
+          );
+
+          const executionId = executionResult.rows[0].id;
+
+          // Execute test
+          const result = await this.executeTest(testCase.id, executionId);
+          results.push(result);
+
+          logger.info(`Test case ${testCase.name}: ${result.status}`);
+        } catch (error: any) {
+          logger.error(`Failed to execute test case ${testCase.id}:`, error);
+          results.push({
+            test_case_id: testCase.id,
+            execution_id: '',
+            status: 'failed',
+            error_message: error.message,
+            duration_ms: 0
+          });
+        }
+      }
+
+      logger.info(`Suite execution complete: ${results.filter((r: TestExecutionResult) => r.status === 'passed').length}/${results.length} passed`);
+    } catch (error: any) {
+      logger.error('Error executing test suite:', error);
+      throw error;
+    } finally {
+      await this.cleanup();
+    }
+
+    return results;
+  }
+}
+
+export default new PlaywrightExecutor();
