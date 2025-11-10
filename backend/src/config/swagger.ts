@@ -127,9 +127,21 @@ const options: swaggerJsdoc.Options = {
             }
           }
         }
+      },
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+          description: 'Enter JWT token obtained from /users/login or /users/register endpoint'
+        }
       }
     },
     tags: [
+      {
+        name: 'Users',
+        description: 'User authentication and management endpoints'
+      },
       {
         name: 'Projects',
         description: 'Project management endpoints'
