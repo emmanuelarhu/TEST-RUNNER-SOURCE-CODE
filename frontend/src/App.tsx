@@ -5,6 +5,7 @@ import ProtectedRoute from './components/common/ProtectedRoute';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import TestSuites from './pages/TestSuites';
+import TestSuiteDetail from './pages/TestSuiteDetail';
 import TestResults from './pages/TestResults';
 import './styles/index.css';
 
@@ -20,6 +21,7 @@ function App() {
           <Route element={<ProjectProvider><MainLayout /></ProjectProvider>}>
             <Route index element={<Dashboard />} />
             <Route path="suites" element={<TestSuites />} />
+            <Route path="suites/:id" element={<TestSuiteDetail />} />
             <Route path="results" element={<TestResults />} />
           </Route>
         </Route>

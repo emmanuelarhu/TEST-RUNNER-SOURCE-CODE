@@ -4,6 +4,7 @@ import type { Project, TestSuite, TestCase, TestRun, TestExecution, CreateProjec
 export const projectApi = {
   getAll: () => apiClient.get<Project[]>('/projects'),
   getById: (id: string) => apiClient.get<Project>(`/projects/${id}`),
+  getStats: (id: string) => apiClient.get<any>(`/projects/${id}/stats`),
   create: (data: CreateProjectDTO) => apiClient.post<Project>('/projects', data),
   update: (id: string, data: Partial<CreateProjectDTO>) => apiClient.put<Project>(`/projects/${id}`, data),
   delete: (id: string) => apiClient.delete(`/projects/${id}`),
@@ -40,12 +41,23 @@ export const healthApi = {
   check: () => apiClient.get('/health'),
 };
 
+export const userApi = {
+  getAll: () => apiClient.get('/users'),
+  getById: (id: string) => apiClient.get(`/users/${id}`),
+  getMe: () => apiClient.get('/users/me'),
+  update: (id: string, data: any) => apiClient.put(`/users/${id}`, data),
+  delete: (id: string) => apiClient.delete(`/users/${id}`),
+  changePassword: (id: string, data: { currentPassword: string; newPassword: string }) =>
+    apiClient.post(`/users/${id}/change-password`, data),
+};
+
 const api = {
   projects: projectApi,
   testSuites: testSuiteApi,
   testCases: testCaseApi,
   executions: executionApi,
   health: healthApi,
+  users: userApi,
 };
 
 export default api;
