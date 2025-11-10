@@ -1,8 +1,10 @@
+import ProjectSelector from '../common/ProjectSelector';
 import styles from './TopBar.module.css';
 
 const TopBar = () => {
   return (
     <div className={styles.topBar}>
+      <ProjectSelector />
       <div className={styles.searchContainer}>
         <span className={styles.searchIcon}>🔍</span>
         <input type="text" className={styles.searchInput} placeholder="Search tests, suites, or results..." />

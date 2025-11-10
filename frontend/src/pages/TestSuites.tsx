@@ -3,11 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import api from '../services/api.service';
 import Button from '../components/common/Button';
 import Loading from '../components/common/Loading';
-import type { TestSuite, Project, BrowserType, EnvironmentType } from '../types';
+import { useProject } from '../contexts/ProjectContext';
+import type { TestSuite, BrowserType, EnvironmentType } from '../types';
 import styles from './TestSuites.module.css';
 
 const TestSuites = () => {
   const navigate = useNavigate();
+  const { currentProject } = useProject();
   const [loading, setLoading] = useState(true);
   const [testSuites, setTestSuites] = useState<TestSuite[]>([]);
   const [browser, setBrowser] = useState<BrowserType>('chromium');
@@ -15,17 +17,20 @@ const TestSuites = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    if (currentProject) {
+      fetchData();
+    }
+  }, [currentProject]);
 
   const fetchData = async () => {
+    if (!currentProject) return;
+
     try {
-      setLoading(true); setError(null);
-      const projectsResponse = await api.projects.getAll();
-      const fetchedProjects = projectsResponse.data;
-      if (fetchedProjects.length > 0) {
-        const suitesResponse = await api.testSuites.getByProject(fetchedProjects[0].id);
-        setTestSuites(suitesResponse.data);
-      }
+      setLoading(true);
+      setError(null);
+      const suitesResponse = await api.testSuites.getByProject(currentProject.id);
+      setTestSuites(suitesResponse.data);
     } catch (err: any) {
       console.error('Error fetching test suites:', err);
       setError(err.response?.data?.message || 'Failed to load test suites');
@@ -43,6 +48,7 @@ const TestSuites = () => {
     } finally { setIsRunning(false); }
   };
 
+  if (!currentProject) return <Loading message="Loading project..." subtitle="Setting up your workspace" />;
   if (loading) return <Loading message="Loading test suites..." subtitle="Fetching your test data" />;
   if (error) return (<div className={styles.errorContainer}><div className={styles.errorIcon}>⚠️</div><h2 className={styles.errorTitle}>Error Loading Test Suites</h2><p className={styles.errorMessage}>{error}</p><button onClick={fetchData} className={styles.retryButton}>Retry</button></div>);
 
