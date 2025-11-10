@@ -1,0 +1,9 @@
+.topBar { background: white; border-bottom: 1px solid var(--gray-200); padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 50; }
+.searchContainer { flex: 1; max-width: 500px; position: relative; }
+.searchInput { width: 100%; padding: 0.625rem 1rem 0.625rem 2.75rem; border: 1px solid var(--gray-300); border-radius: 10px; font-size: 0.875rem; transition: all 0.15s; background: var(--gray-50); }
+.searchInput:focus { outline: none; border-color: var(--primary-500); background: white; box-shadow: 0 0 0 3px var(--primary-50); }
+.searchIcon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--gray-400); font-size: 1.125rem; }
+.topBarActions { display: flex; align-items: center; gap: 1rem; }
+.iconButton { width: 40px; height: 40px; border-radius: 10px; border: none; background: var(--gray-100); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; color: var(--gray-600); position: relative; }
+.iconButton:hover { background: var(--gray-200); color: var(--gray-900); }
+.notificationBadge { position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; background: var(--error-500); border-radius: 50%; border: 2px solid white; }

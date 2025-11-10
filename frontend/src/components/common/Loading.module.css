@@ -1,0 +1,5 @@
+.loadingOverlay { background: var(--primary-50); border: 2px solid var(--primary-200); border-radius: 16px; padding: 2rem; margin-bottom: 2rem; display: flex; align-items: center; gap: 1.5rem; }
+.spinner { width: 48px; height: 48px; border: 4px solid var(--primary-200); border-top-color: var(--primary-600); border-radius: 50%; animation: spin 1s linear infinite; }
+.loadingText { flex: 1; }
+.loadingTitle { font-size: 1.125rem; font-weight: 600; color: var(--primary-900); margin-bottom: 0.25rem; }
+.loadingSubtitle { font-size: 0.875rem; color: var(--primary-700); }

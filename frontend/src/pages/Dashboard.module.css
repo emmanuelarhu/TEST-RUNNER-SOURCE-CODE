@@ -1,0 +1,36 @@
+.pageHeader { margin-bottom: 2rem; }
+.pageTitle { font-size: 2rem; font-weight: 700; color: var(--gray-900); margin-bottom: 0.5rem; }
+.pageSubtitle { font-size: 1rem; color: var(--gray-600); }
+.breadcrumb { display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; color: var(--gray-500); margin-bottom: 1rem; }
+.statsGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+.testSuitesGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+.suiteCard { background: white; border-radius: 16px; padding: 1.5rem; border: 1px solid var(--gray-200); cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden; }
+.suiteCard::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, var(--primary-500), var(--primary-300)); transform: scaleX(0); transition: transform 0.3s; }
+.suiteCard:hover { transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); border-color: var(--primary-200); }
+.suiteCard:hover::after { transform: scaleX(1); }
+.suiteHeader { display: flex; align-items: flex-start; gap: 1rem; margin-bottom: 1rem; }
+.suiteIcon { width: 56px; height: 56px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.75rem; background: var(--gray-100); flex-shrink: 0; }
+.suiteInfo { flex: 1; min-width: 0; }
+.suiteTitle { font-size: 1.125rem; font-weight: 600; color: var(--gray-900); margin-bottom: 0.25rem; }
+.suiteDescription { font-size: 0.875rem; color: var(--gray-600); line-height: 1.5; }
+.suiteStats { display: flex; gap: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--gray-100); margin-top: 1rem; }
+.suiteStat { display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; }
+.suiteStatIcon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.875rem; font-weight: 600; }
+.suiteBadge { display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.375rem 0.75rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600; margin-top: 0.75rem; }
+.suiteBadge.active { background: var(--success-50); color: var(--success-700); }
+.suiteBadge.archived { background: var(--gray-100); color: var(--gray-600); }
+.suiteBadge.draft { background: var(--warning-50); color: var(--warning-500); }
+.emptyState { text-align: center; padding: 4rem 2rem; background: white; border-radius: 16px; border: 1px solid var(--gray-200); }
+.emptyIllustration { font-size: 5rem; margin-bottom: 1.5rem; opacity: 0.4; }
+.emptyTitle { font-size: 1.5rem; font-weight: 700; color: var(--gray-900); margin-bottom: 0.5rem; }
+.emptyDescription { font-size: 1rem; color: var(--gray-600); margin-bottom: 2rem; }
+.createButton { padding: 0.75rem 1.5rem; border-radius: 10px; font-size: 0.875rem; font-weight: 600; background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-600) 100%); color: white; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; box-shadow: 0 4px 6px -1px rgba(14, 165, 233, 0.3); transition: all 0.2s; }
+.createButton:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(14, 165, 233, 0.3); }
+.errorContainer { text-align: center; padding: 4rem 2rem; background: white; border-radius: 16px; border: 1px solid var(--error-200); }
+.errorIcon { font-size: 4rem; margin-bottom: 1rem; }
+.errorTitle { font-size: 1.5rem; font-weight: 700; color: var(--error-900); margin-bottom: 0.5rem; }
+.errorMessage { font-size: 1rem; color: var(--error-700); margin-bottom: 2rem; }
+.retryButton { padding: 0.75rem 1.5rem; border-radius: 10px; font-size: 0.875rem; font-weight: 600; background: var(--error-500); color: white; border: none; cursor: pointer; transition: all 0.2s; }
+.retryButton:hover { background: var(--error-600); }
+@media (max-width: 1024px) { .statsGrid { grid-template-columns: repeat(2, 1fr); } .testSuitesGrid { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .statsGrid { grid-template-columns: 1fr; } }
