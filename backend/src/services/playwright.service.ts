@@ -1,249 +1,343 @@
-import { chromium, firefox, webkit, Browser, BrowserContext, Page } from 'playwright';
-import { ExecuteTestDTO, TestExecutionResult } from '../models/types';
-import pool from '../config/database';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import * as fs from 'fs/promises';
+import * as path from 'path';
 import logger from '../config/logger';
-import path from 'path';
-import fs from 'fs/promises';
-import { v4 as uuidv4 } from 'uuid';
+import pool from '../config/database';
 
-export class PlaywrightExecutor {
-  private browser: Browser | null = null;
-  private context: BrowserContext | null = null;
-  private page: Page | null = null;
+const execAsync = promisify(exec);
+
+interface PlaywrightConfig {
+  projectId: string;
+  suiteId?: string;
+  browser?: 'chromium' | 'firefox' | 'webkit';
+  headed?: boolean;
+  workers?: number;
+}
+
+interface TestResult {
+  projectId: string;
+  suiteId?: string;
+  runName: string;
+  status: 'in_progress' | 'completed' | 'failed' | 'cancelled';
+  totalTests: number;
+  passedTests: number;
+  failedTests: number;
+  skippedTests: number;
+  duration: number;
+  reportPath?: string;
+}
+
+class PlaywrightService {
+  private readonly projectsDir = path.join(__dirname, '../../test-projects');
+  private readonly reportsDir = path.join(__dirname, '../../public/reports');
+
+  constructor() {
+    this.ensureDirectories();
+  }
 
   /**
-   * Initialize browser instance
+   * Ensure required directories exist
    */
-  async initBrowser(browserType: 'chromium' | 'firefox' | 'webkit' = 'chromium', headless: boolean = true): Promise<void> {
+  private async ensureDirectories(): Promise<void> {
     try {
-      logger.info(`Initializing ${browserType} browser (headless: ${headless})`);
-      
-      const launchOptions = {
-        headless,
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
-      };
+      await fs.mkdir(this.projectsDir, { recursive: true });
+      await fs.mkdir(this.reportsDir, { recursive: true });
+      logger.info('Playwright directories initialized');
+    } catch (error) {
+      logger.error('Error creating directories:', error);
+    }
+  }
 
-      switch (browserType) {
-        case 'firefox':
-          this.browser = await firefox.launch(launchOptions);
-          break;
-        case 'webkit':
-          this.browser = await webkit.launch(launchOptions);
-          break;
-        default:
-          this.browser = await chromium.launch(launchOptions);
-      }
+  /**
+   * Clone repository from URL (supports GitHub, GitLab, Azure DevOps)
+   */
+  async cloneRepository(
+    repoUrl: string,
+    projectName: string,
+    branch: string = 'main'
+  ): Promise<string> {
+    const projectPath = path.join(this.projectsDir, projectName);
 
-      this.context = await this.browser.newContext({
-        viewport: { width: 1920, height: 1080 },
-        recordVideo: {
-          dir: path.join(process.cwd(), 'uploads', 'videos'),
-          size: { width: 1920, height: 1080 }
+    try {
+      // Check if project already exists
+      try {
+        await fs.access(projectPath);
+        logger.info(`Project ${projectName} already exists, pulling latest changes...`);
+
+        // Pull latest changes
+        const { stdout, stderr } = await execAsync(
+          `cd "${projectPath}" && git pull origin ${branch}`,
+          { timeout: 60000 }
+        );
+
+        logger.info(`Git pull output: ${stdout}`);
+        if (stderr && !stderr.includes('Already up to date')) {
+          logger.warn(`Git pull stderr: ${stderr}`);
         }
-      });
+      } catch {
+        // Directory doesn't exist, clone the repo
+        logger.info(`Cloning repository: ${repoUrl}`);
 
-      this.page = await this.context.newPage();
-      logger.info('✅ Browser initialized successfully');
-    } catch (error) {
-      logger.error('❌ Failed to initialize browser:', error);
-      throw error;
-    }
-  }
+        const { stdout, stderr } = await execAsync(
+          `git clone ${repoUrl} "${projectPath}" --branch ${branch} --single-branch`,
+          { timeout: 120000 }
+        );
 
-  /**
-   * Execute a single test case
-   */
-  async executeTest(testCaseId: string, executionId: string): Promise<TestExecutionResult> {
-    const startTime = Date.now();
-    let result: TestExecutionResult = {
-      execution_id: executionId,
-      test_case_id: testCaseId,
-      status: 'running',
-      duration_ms: 0
-    };
-
-    try {
-      // Fetch test case details from database
-      const testCaseQuery = await pool.query(
-        'SELECT * FROM test_cases WHERE id = $1',
-        [testCaseId]
-      );
-
-      if (testCaseQuery.rows.length === 0) {
-        throw new Error(`Test case ${testCaseId} not found`);
-      }
-
-      const testCase = testCaseQuery.rows[0];
-      logger.info(`Executing test: ${testCase.name}`);
-
-      // Update execution status to running
-      await pool.query(
-        `UPDATE test_executions 
-         SET status = 'running', start_time = CURRENT_TIMESTAMP 
-         WHERE id = $1`,
-        [executionId]
-      );
-
-      // Execute the test script
-      if (testCase.test_script && this.page) {
-        await this.runTestScript(testCase.test_script, this.page);
-        
-        result.status = 'passed';
-        logger.info(`✅ Test ${testCase.name} passed`);
-      } else {
-        throw new Error('No test script found or page not initialized');
-      }
-
-    } catch (error: any) {
-      result.status = 'failed';
-      result.error_message = error.message;
-      logger.error(`❌ Test failed:`, error);
-
-      // Take screenshot on failure
-      if (this.page) {
-        const screenshotPath = await this.captureScreenshot(testCaseId);
-        result.screenshot_path = screenshotPath;
-      }
-    } finally {
-      const endTime = Date.now();
-      result.duration_ms = endTime - startTime;
-
-      // Update execution record in database
-      await pool.query(
-        `UPDATE test_executions
-         SET status = $1, end_time = CURRENT_TIMESTAMP, duration_ms = $2,
-             error_message = $3, screenshot_path = $4
-         WHERE id = $5`,
-        [result.status, result.duration_ms, result.error_message || null, result.screenshot_path || null, executionId]
-      );
-    }
-
-    return result;
-  }
-
-  /**
-   * Run test script
-   */
-  private async runTestScript(script: string, page: Page): Promise<void> {
-    // Create an async function from the script
-    const testFunction = new Function('page', 'expect', `
-      return (async () => {
-        ${script}
-      })();
-    `);
-
-    // Execute the test script
-    await testFunction(page, null);
-  }
-
-  /**
-   * Capture screenshot
-   */
-  private async captureScreenshot(testCaseId: string): Promise<string> {
-    const screenshotDir = path.join(process.cwd(), 'uploads', 'screenshots');
-
-    // Ensure directory exists
-    await fs.mkdir(screenshotDir, { recursive: true });
-
-    const filename = `${testCaseId}-${uuidv4()}.png`;
-    const filepath = path.join(screenshotDir, filename);
-
-    if (this.page) {
-      await this.page.screenshot({ path: filepath, fullPage: true });
-      logger.info(`📸 Screenshot saved: ${filepath}`);
-    }
-
-    return filepath;
-  }
-
-  /**
-   * Close browser
-   */
-  async closeBrowser(): Promise<void> {
-    try {
-      if (this.context) {
-        await this.context.close();
-      }
-      if (this.browser) {
-        await this.browser.close();
-      }
-      logger.info('✅ Browser closed successfully');
-    } catch (error) {
-      logger.error('❌ Error closing browser:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Cleanup resources (alias for closeBrowser)
-   */
-  async cleanup(): Promise<void> {
-    await this.closeBrowser();
-  }
-
-  /**
-   * Execute entire test suite
-   */
-  async executeTestSuite(suiteId: string, options: ExecuteTestDTO): Promise<TestExecutionResult[]> {
-    const results: TestExecutionResult[] = [];
-
-    try {
-      // Fetch all test cases in the suite
-      const casesQuery = await pool.query(
-        'SELECT * FROM test_cases WHERE suite_id = $1 ORDER BY created_at',
-        [suiteId]
-      );
-
-      if (casesQuery.rows.length === 0) {
-        logger.warn(`No test cases found in suite ${suiteId}`);
-        return results;
-      }
-
-      logger.info(`Executing ${casesQuery.rows.length} test cases in suite ${suiteId}`);
-
-      // Initialize browser once for all tests
-      await this.initBrowser(options.browser || 'chromium', options.headless ?? true);
-
-      // Execute each test case
-      for (const testCase of casesQuery.rows) {
-        try {
-          // Create execution record
-          const executionResult = await pool.query(
-            `INSERT INTO test_executions (test_case_id, suite_id, status, browser, environment)
-             VALUES ($1, $2, 'pending', $3, $4)
-             RETURNING id`,
-            [testCase.id, suiteId, options.browser || 'chromium', options.environment || 'test']
-          );
-
-          const executionId = executionResult.rows[0].id;
-
-          // Execute test
-          const result = await this.executeTest(testCase.id, executionId);
-          results.push(result);
-
-          logger.info(`Test case ${testCase.name}: ${result.status}`);
-        } catch (error: any) {
-          logger.error(`Failed to execute test case ${testCase.id}:`, error);
-          results.push({
-            test_case_id: testCase.id,
-            execution_id: '',
-            status: 'failed',
-            error_message: error.message,
-            duration_ms: 0
-          });
+        logger.info(`Git clone output: ${stdout}`);
+        if (stderr) {
+          logger.warn(`Git clone stderr: ${stderr}`);
         }
       }
 
-      logger.info(`Suite execution complete: ${results.filter((r: TestExecutionResult) => r.status === 'passed').length}/${results.length} passed`);
+      // Install dependencies if package.json exists
+      const packageJsonPath = path.join(projectPath, 'package.json');
+      try {
+        await fs.access(packageJsonPath);
+        logger.info('Installing dependencies...');
+
+        const { stdout, stderr } = await execAsync(
+          `cd "${projectPath}" && npm install`,
+          { timeout: 300000 }
+        );
+
+        logger.info('Dependencies installed successfully');
+        if (stderr) {
+          logger.debug(`npm install stderr: ${stderr}`);
+        }
+      } catch (error) {
+        logger.warn('No package.json found or error installing dependencies');
+      }
+
+      return projectPath;
     } catch (error: any) {
-      logger.error('Error executing test suite:', error);
+      logger.error('Error cloning repository:', error);
+      throw new Error(`Failed to clone repository: ${error.message}`);
+    }
+  }
+
+  /**
+   * Run Playwright tests for a project
+   */
+  async runTests(config: PlaywrightConfig): Promise<TestResult> {
+    const { projectId, suiteId, browser = 'chromium', headed = false, workers = 1 } = config;
+
+    try {
+      // Get project details from database
+      const projectResult = await pool.query(
+        'SELECT * FROM projects WHERE id = $1',
+        [projectId]
+      );
+
+      if (projectResult.rows.length === 0) {
+        throw new Error('Project not found');
+      }
+
+      const project = projectResult.rows[0];
+      const projectPath = path.join(this.projectsDir, project.name);
+
+      // Create test run record
+      const runResult = await pool.query(
+        `INSERT INTO test_runs (project_id, suite_id, run_name, status, start_time, browser, environment)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         RETURNING *`,
+        [
+          projectId,
+          suiteId || null,
+          `Run ${new Date().toISOString()}`,
+          'in_progress',
+          new Date(),
+          browser,
+          'test'
+        ]
+      );
+
+      const testRunId = runResult.rows[0].id;
+      const reportName = `report-${testRunId}`;
+      const reportPath = path.join(this.reportsDir, reportName);
+
+      // Build Playwright command
+      let playwrightCmd = `npx playwright test`;
+      playwrightCmd += ` --project=${browser}`;
+      playwrightCmd += ` --workers=${workers}`;
+      playwrightCmd += headed ? ` --headed` : ` --headless`;
+      playwrightCmd += ` --reporter=html,list`;
+      playwrightCmd += ` --output="${reportPath}"`;
+
+      const startTime = Date.now();
+      let testResult: TestResult;
+
+      try {
+        logger.info(`Running Playwright tests for project ${project.name}...`);
+        logger.info(`Command: ${playwrightCmd}`);
+
+        const { stdout, stderr } = await execAsync(
+          `cd "${projectPath}" && ${playwrightCmd}`,
+          { timeout: 600000 } // 10 minute timeout
+        );
+
+        const duration = Date.now() - startTime;
+
+        logger.info(`Test execution completed`);
+        logger.info(`stdout: ${stdout}`);
+        if (stderr) {
+          logger.warn(`stderr: ${stderr}`);
+        }
+
+        // Parse test results from output
+        const results = this.parsePlaywrightOutput(stdout);
+
+        testResult = {
+          projectId,
+          suiteId,
+          runName: runResult.rows[0].run_name,
+          status: results.failed > 0 ? 'failed' : 'completed',
+          totalTests: results.total,
+          passedTests: results.passed,
+          failedTests: results.failed,
+          skippedTests: results.skipped,
+          duration,
+          reportPath: `/reports/${reportName}/index.html`
+        };
+
+        // Update test run in database
+        await pool.query(
+          `UPDATE test_runs
+           SET status = $1,
+               total_tests = $2,
+               passed_tests = $3,
+               failed_tests = $4,
+               skipped_tests = $5,
+               end_time = $6,
+               duration_ms = $7
+           WHERE id = $8`,
+          [
+            testResult.status,
+            testResult.totalTests,
+            testResult.passedTests,
+            testResult.failedTests,
+            testResult.skippedTests,
+            new Date(),
+            testResult.duration,
+            testRunId
+          ]
+        );
+
+        return testResult;
+      } catch (error: any) {
+        const duration = Date.now() - startTime;
+
+        logger.error('Error running Playwright tests:', error);
+
+        // Update test run as failed
+        await pool.query(
+          `UPDATE test_runs
+           SET status = $1,
+               end_time = $2,
+               duration_ms = $3
+           WHERE id = $4`,
+          ['failed', new Date(), duration, testRunId]
+        );
+
+        throw new Error(`Test execution failed: ${error.message}`);
+      }
+    } catch (error: any) {
+      logger.error('Error in runTests:', error);
       throw error;
-    } finally {
-      await this.cleanup();
+    }
+  }
+
+  /**
+   * Parse Playwright test output to extract results
+   */
+  private parsePlaywrightOutput(output: string): {
+    total: number;
+    passed: number;
+    failed: number;
+    skipped: number;
+  } {
+    const results = { total: 0, passed: 0, failed: 0, skipped: 0 };
+
+    try {
+      // Look for summary line like: "3 passed (5s)"
+      const passedMatch = output.match(/(\d+)\s+passed/i);
+      if (passedMatch) {
+        results.passed = parseInt(passedMatch[1]);
+      }
+
+      // Look for failed tests: "2 failed"
+      const failedMatch = output.match(/(\d+)\s+failed/i);
+      if (failedMatch) {
+        results.failed = parseInt(failedMatch[1]);
+      }
+
+      // Look for skipped tests: "1 skipped"
+      const skippedMatch = output.match(/(\d+)\s+skipped/i);
+      if (skippedMatch) {
+        results.skipped = parseInt(skippedMatch[1]);
+      }
+
+      results.total = results.passed + results.failed + results.skipped;
+
+    } catch (error) {
+      logger.error('Error parsing Playwright output:', error);
     }
 
     return results;
   }
+
+  /**
+   * Get HTML report path for a test run
+   */
+  async getReportPath(testRunId: string): Promise<string | null> {
+    const reportPath = path.join(this.reportsDir, `report-${testRunId}`, 'index.html');
+
+    try {
+      await fs.access(reportPath);
+      return `/reports/report-${testRunId}/index.html`;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * List all cloned projects
+   */
+  async listProjects(): Promise<string[]> {
+    try {
+      const files = await fs.readdir(this.projectsDir);
+      const projects: string[] = [];
+
+      for (const file of files) {
+        const projectPath = path.join(this.projectsDir, file);
+        const stats = await fs.stat(projectPath);
+
+        if (stats.isDirectory()) {
+          projects.push(file);
+        }
+      }
+
+      return projects;
+    } catch (error) {
+      logger.error('Error listing projects:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Delete a cloned project
+   */
+  async deleteProject(projectName: string): Promise<void> {
+    const projectPath = path.join(this.projectsDir, projectName);
+
+    try {
+      await fs.rm(projectPath, { recursive: true, force: true });
+      logger.info(`Project ${projectName} deleted`);
+    } catch (error) {
+      logger.error(`Error deleting project ${projectName}:`, error);
+      throw new Error('Failed to delete project');
+    }
+  }
 }
 
-export default new PlaywrightExecutor();
+export default new PlaywrightService();

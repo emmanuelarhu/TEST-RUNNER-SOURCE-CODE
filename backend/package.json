@@ -23,6 +23,7 @@
   "author": "Emmanuel Arhu",
   "license": "MIT",
   "dependencies": {
+    "@playwright/test": "^1.56.1",
     "@types/winston": "^2.4.4",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
@@ -31,7 +32,7 @@
     "express-validator": "^7.0.1",
     "jsonwebtoken": "^9.0.2",
     "pg": "^8.11.3",
-    "playwright": "^1.44.0",
+    "playwright": "^1.56.1",
     "socket.io": "^4.7.2",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.0",
