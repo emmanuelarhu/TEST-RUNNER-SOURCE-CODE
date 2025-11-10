@@ -8,6 +8,7 @@ import path from 'path';
 // Config
 import logger from './config/logger';
 import { initializeDatabase } from './models/database.schema';
+import { seedDatabase } from './seed-data';
 import { setupSwagger } from './config/swagger';
 
 // Routes
@@ -134,6 +135,9 @@ class App {
     try {
       // Initialize database
       await initializeDatabase();
+
+      // Seed database with sample data (only if empty)
+      await seedDatabase();
 
       // Start server
       this.server.listen(this.port, () => {

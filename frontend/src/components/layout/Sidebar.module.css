@@ -1,0 +1,21 @@
+.sidebar { width: 280px; background: white; border-right: 1px solid var(--gray-200); display: flex; flex-direction: column; position: fixed; height: 100vh; z-index: 100; }
+.sidebarHeader { padding: 1.5rem; border-bottom: 1px solid var(--gray-200); }
+.logoContainer { display: flex; align-items: center; gap: 0.75rem; }
+.logo { width: 40px; height: 40px; background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-700) 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 800; font-size: 1.25rem; box-shadow: 0 4px 6px -1px rgba(14, 165, 233, 0.2); }
+.brandName { font-size: 1.25rem; font-weight: 700; color: var(--gray-900); }
+.brandTagline { font-size: 0.75rem; color: var(--gray-500); margin-top: -0.25rem; }
+.sidebarNav { flex: 1; padding: 1.5rem 1rem; overflow-y: auto; }
+.navSection { margin-bottom: 2rem; }
+.navSectionTitle { font-size: 0.75rem; font-weight: 600; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.05em; padding: 0 0.75rem; margin-bottom: 0.5rem; }
+.navItem { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; margin-bottom: 0.25rem; border-radius: 8px; cursor: pointer; transition: all 0.15s; color: var(--gray-700); font-size: 0.875rem; font-weight: 500; border: none; background: transparent; width: 100%; text-align: left; text-decoration: none; }
+.navItem:hover { background: var(--gray-50); color: var(--gray-900); }
+.navItem.active { background: var(--primary-50); color: var(--primary-700); }
+.navIcon { font-size: 1.25rem; width: 20px; display: flex; align-items: center; justify-content: center; }
+.sidebarFooter { padding: 1rem; border-top: 1px solid var(--gray-200); }
+.userProfile { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; border-radius: 8px; cursor: pointer; transition: background 0.15s; }
+.userProfile:hover { background: var(--gray-50); }
+.userAvatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, var(--primary-400) 0%, var(--primary-600) 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 0.875rem; }
+.userInfo { flex: 1; }
+.userName { font-size: 0.875rem; font-weight: 600; color: var(--gray-900); }
+.userRole { font-size: 0.75rem; color: var(--gray-500); }
+@media (max-width: 1024px) { .sidebar { transform: translateX(-100%); } }

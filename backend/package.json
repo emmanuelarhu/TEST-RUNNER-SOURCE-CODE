@@ -10,7 +10,8 @@
     "clean": "rm -rf dist",
     "lint": "eslint . --ext .ts",
     "test": "jest",
-    "db:setup": "bash setup-db.sh"
+    "db:setup": "bash setup-db.sh",
+    "db:seed": "ts-node src/seed.ts"
   },
   "keywords": [
     "test-automation",

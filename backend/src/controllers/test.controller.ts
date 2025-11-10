@@ -12,14 +12,25 @@ export class TestController {
       const { projectId } = req.params;
 
       const result = await pool.query(
-        `SELECT ts.*, 
-                COUNT(tc.id) as test_count,
-                u.username as created_by_username
+        `SELECT ts.*,
+                COUNT(DISTINCT tc.id) as totalTests,
+                u.username as created_by_username,
+                tr.passed_tests as passed,
+                tr.failed_tests as failed,
+                tr.skipped_tests as skipped,
+                tr.start_time as lastRun
          FROM test_suites ts
          LEFT JOIN test_cases tc ON ts.id = tc.suite_id
          LEFT JOIN users u ON ts.created_by = u.id
+         LEFT JOIN LATERAL (
+           SELECT passed_tests, failed_tests, skipped_tests, start_time
+           FROM test_runs
+           WHERE suite_id = ts.id
+           ORDER BY start_time DESC
+           LIMIT 1
+         ) tr ON true
          WHERE ts.project_id = $1
-         GROUP BY ts.id, u.username
+         GROUP BY ts.id, u.username, tr.passed_tests, tr.failed_tests, tr.skipped_tests, tr.start_time
          ORDER BY ts.created_at DESC`,
         [projectId]
       );
