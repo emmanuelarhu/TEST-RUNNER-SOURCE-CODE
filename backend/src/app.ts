@@ -15,6 +15,7 @@ import { setupSwagger } from './config/swagger';
 import projectRoutes from './routes/project.routes';
 import executionRoutes from './routes/execution.routes';
 import testRoutes from './routes/test.routes';
+import userRoutes from './routes/user.routes';
 
 // Middleware
 import { errorHandler, notFoundHandler } from './middleware/error.middleware';
@@ -86,6 +87,7 @@ class App {
     this.app.use(`/api/${apiVersion}/projects`, projectRoutes);
     this.app.use(`/api/${apiVersion}/executions`, executionRoutes);
     this.app.use(`/api/${apiVersion}/tests`, testRoutes);
+    this.app.use(`/api/${apiVersion}/users`, userRoutes);
 
     // Root route
     this.app.get('/', (req, res) => {
@@ -101,6 +103,7 @@ class App {
           projects: `/api/${apiVersion}/projects`,
           tests: `/api/${apiVersion}/tests`,
           executions: `/api/${apiVersion}/executions`,
+          users: `/api/${apiVersion}/users`,
           health: '/health'
         }
       });

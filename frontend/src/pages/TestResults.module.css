@@ -45,3 +45,36 @@
 .errorMessage { font-size: 1rem; color: var(--error-700); margin-bottom: 2rem; }
 .retryButton { padding: 0.75rem 1.5rem; border-radius: 10px; font-size: 0.875rem; font-weight: 600; background: var(--error-500); color: white; border: none; cursor: pointer; transition: all 0.2s; }
 .retryButton:hover { background: var(--error-600); }
+
+/* Error Panel Styles */
+.errorPanel { background: var(--error-50); border: 2px solid var(--error-200); border-radius: 12px; padding: 1.5rem; margin: 1.5rem 0; }
+.errorPanel .errorHeader { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; }
+.errorPanel .errorIcon { width: 32px; height: 32px; background: var(--error-500); color: white; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.125rem; }
+.errorPanel .errorTitle { font-size: 1rem; font-weight: 600; color: var(--error-900); }
+.errorPanel .errorMessage { font-size: 0.875rem; color: var(--error-700); line-height: 1.6; }
+
+/* Comparison Grid Styles */
+.comparisonGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
+.comparisonBox { padding: 1.25rem; border-radius: 12px; border: 2px solid; }
+.comparisonBox.expected { background: var(--success-50); border-color: var(--success-200); }
+.comparisonBox.received { background: var(--error-50); border-color: var(--error-200); }
+.comparisonLabel { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.75rem; }
+.comparisonLabel.expected { color: var(--success-700); }
+.comparisonLabel.received { color: var(--error-700); }
+.comparisonValue { font-size: 0.875rem; line-height: 1.6; font-family: 'Courier New', monospace; }
+.comparisonValue.expected { color: var(--success-900); }
+.comparisonValue.received { color: var(--error-900); }
+
+/* Steps Timeline Styles */
+.stepsTimeline { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 2px solid var(--gray-200); }
+.timelineTitle { font-size: 0.875rem; font-weight: 600; color: var(--gray-700); margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.stepItem { display: flex; gap: 1rem; padding: 0.75rem 0; }
+.stepIndicator { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1rem; flex-shrink: 0; }
+.stepIndicator.passed { background: var(--success-50); color: var(--success-600); }
+.stepIndicator.failed { background: var(--error-50); color: var(--error-600); }
+.stepIndicator.skipped { background: var(--gray-100); color: var(--gray-600); }
+.stepContent { flex: 1; min-width: 0; }
+.stepName { font-size: 0.875rem; font-weight: 600; color: var(--gray-900); margin-bottom: 0.25rem; }
+.stepDetails { display: flex; align-items: center; gap: 1rem; font-size: 0.8125rem; color: var(--gray-600); }
+.stepPath { font-family: 'Courier New', monospace; }
+.stepDuration { color: var(--gray-500); }

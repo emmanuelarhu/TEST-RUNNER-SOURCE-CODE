@@ -3,29 +3,31 @@ import { useNavigate } from 'react-router-dom';
 import api from '../services/api.service';
 import StatCard from '../components/common/StatCard';
 import Loading from '../components/common/Loading';
-import type { TestSuite, Project } from '../types';
+import { useProject } from '../contexts/ProjectContext';
+import type { TestSuite } from '../types';
 import styles from './Dashboard.module.css';
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { currentProject } = useProject();
   const [loading, setLoading] = useState(true);
-  const [projects, setProjects] = useState<Project[]>([]);
   const [testSuites, setTestSuites] = useState<TestSuite[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => { fetchDashboardData(); }, []);
+  useEffect(() => {
+    if (currentProject) {
+      fetchDashboardData();
+    }
+  }, [currentProject]);
 
   const fetchDashboardData = async () => {
+    if (!currentProject) return;
+
     try {
       setLoading(true);
       setError(null);
-      const projectsResponse = await api.projects.getAll();
-      const fetchedProjects = projectsResponse.data;
-      setProjects(fetchedProjects);
-      if (fetchedProjects.length > 0) {
-        const suitesResponse = await api.testSuites.getByProject(fetchedProjects[0].id);
-        setTestSuites(suitesResponse.data);
-      }
+      const suitesResponse = await api.testSuites.getByProject(currentProject.id);
+      setTestSuites(suitesResponse.data);
     } catch (err: any) {
       console.error('Error fetching dashboard data:', err);
       setError(err.response?.data?.message || 'Failed to load dashboard data');
@@ -34,6 +36,7 @@ const Dashboard = () => {
 
   const stats = { total: testSuites.length * 10, passed: testSuites.length * 8, failed: testSuites.length * 2, passRate: testSuites.length > 0 ? '80%' : '0%' };
 
+  if (!currentProject) return <Loading message="Loading project..." subtitle="Setting up your workspace" />;
   if (loading) return <Loading message="Loading dashboard..." subtitle="Fetching your test data" />;
   if (error) return (<div className={styles.errorContainer}><div className={styles.errorIcon}>⚠️</div><h2 className={styles.errorTitle}>Error Loading Dashboard</h2><p className={styles.errorMessage}>{error}</p><button onClick={fetchDashboardData} className={styles.retryButton}>Retry</button></div>);
 

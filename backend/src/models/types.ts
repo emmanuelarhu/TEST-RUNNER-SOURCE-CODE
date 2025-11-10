@@ -123,3 +123,34 @@ export interface TestExecutionResult {
   error_message?: string;
   screenshot_path?: string;
 }
+
+// User DTOs
+export interface CreateUserDTO {
+  username: string;
+  email: string;
+  password: string;
+  full_name?: string;
+  role?: 'admin' | 'user' | 'viewer';
+}
+
+export interface UpdateUserDTO {
+  username?: string;
+  email?: string;
+  full_name?: string;
+  role?: 'admin' | 'user' | 'viewer';
+  is_active?: boolean;
+}
+
+export interface LoginDTO {
+  username: string;
+  password: string;
+}
+
+export interface AuthResponse {
+  success: boolean;
+  message: string;
+  data: {
+    user: Omit<User, 'password_hash'>;
+    token: string;
+  };
+}

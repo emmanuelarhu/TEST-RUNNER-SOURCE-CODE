@@ -149,3 +149,15 @@ export interface TestStep {
 export type BrowserType = 'chromium' | 'firefox' | 'webkit';
 export type EnvironmentType = 'production' | 'staging' | 'development';
 export type TestFilterType = 'all' | 'passed' | 'failed' | 'skipped';
+
+// User & Auth Types
+export interface User {
+  id: string;
+  username: string;
+  email: string;
+  full_name?: string;
+  role: 'admin' | 'user' | 'viewer';
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
