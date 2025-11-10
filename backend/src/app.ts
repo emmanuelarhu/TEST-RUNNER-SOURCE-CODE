@@ -60,6 +60,9 @@ class App {
     // Static files (for screenshots and videos)
     this.app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
+    // Static files for Playwright HTML reports
+    this.app.use('/reports', express.static(path.join(__dirname, '../public/reports')));
+
     // Swagger documentation
     setupSwagger(this.app);
 

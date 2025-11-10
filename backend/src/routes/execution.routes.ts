@@ -5,13 +5,13 @@ const router = Router();
 
 /**
  * @swagger
- * /api/v1/executions/test-case/{testCaseId}/execute:
+ * /api/v1/executions/project/{projectId}/execute:
  *   post:
- *     summary: Execute a single test case
+ *     summary: Execute all tests for a project using Playwright
  *     tags: [Execution]
  *     parameters:
  *       - in: path
- *         name: testCaseId
+ *         name: projectId
  *         required: true
  *         schema:
  *           type: string
@@ -26,23 +26,23 @@ const router = Router();
  *                 type: string
  *                 enum: [chromium, firefox, webkit]
  *                 default: chromium
- *               environment:
- *                 type: string
- *                 default: test
  *               headless:
  *                 type: boolean
  *                 default: true
+ *               workers:
+ *                 type: integer
+ *                 default: 1
  *     responses:
  *       200:
- *         description: Test execution completed
+ *         description: Project test execution completed
  */
-router.post('/test-case/:testCaseId/execute', executionController.executeTestCase.bind(executionController));
+router.post('/project/:projectId/execute', executionController.executeProject.bind(executionController));
 
 /**
  * @swagger
  * /api/v1/executions/suite/{suiteId}/execute:
  *   post:
- *     summary: Execute entire test suite
+ *     summary: Execute test suite using Playwright
  *     tags: [Execution]
  *     parameters:
  *       - in: path
@@ -69,6 +69,61 @@ router.post('/test-case/:testCaseId/execute', executionController.executeTestCas
  *         description: Suite execution completed
  */
 router.post('/suite/:suiteId/execute', executionController.executeTestSuite.bind(executionController));
+
+/**
+ * @swagger
+ * /api/v1/executions/project/{projectId}/clone:
+ *   post:
+ *     summary: Clone repository for a project (GitHub, GitLab, Azure DevOps)
+ *     tags: [Execution]
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - repoUrl
+ *             properties:
+ *               repoUrl:
+ *                 type: string
+ *                 example: https://token@dev.azure.com/org/project/_git/repo
+ *               branch:
+ *                 type: string
+ *                 default: main
+ *     responses:
+ *       200:
+ *         description: Repository cloned successfully
+ */
+router.post('/project/:projectId/clone', executionController.cloneRepository.bind(executionController));
+
+/**
+ * @swagger
+ * /api/v1/executions/run/{runId}/report:
+ *   get:
+ *     summary: Get Playwright HTML report for a test run
+ *     tags: [Execution]
+ *     parameters:
+ *       - in: path
+ *         name: runId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Report path retrieved
+ *       404:
+ *         description: Report not found
+ */
+router.get('/run/:runId/report', executionController.getTestReport.bind(executionController));
 
 /**
  * @swagger
