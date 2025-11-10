@@ -38,14 +38,39 @@ const TestSuites = () => {
   };
 
   const handleRunTests = async (suiteId?: string) => {
+    if (!currentProject) return;
+
     try {
       setIsRunning(true);
-      if (suiteId) await api.executions.executeTestSuite(suiteId, { browser, environment, headless: true });
+      setError(null);
+
+      let response;
+      if (suiteId) {
+        // Run specific test suite with Playwright
+        response = await api.executions.executeTestSuite(suiteId, { browser, environment, headless: true });
+      } else {
+        // Run all project tests with Playwright
+        response = await api.executions.executeProject(currentProject.id, {
+          browser,
+          headless: true,
+          workers: 1
+        });
+      }
+
+      // Show success message with report link
+      const testRun = response.data;
+      const message = `Tests ${testRun.status === 'completed' ? 'completed successfully' : 'finished'}!\n\nTotal: ${testRun.totalTests}\nPassed: ${testRun.passedTests}\nFailed: ${testRun.failedTests}\n\nView results page for the HTML report.`;
+
+      alert(message);
       navigate('/results');
     } catch (err: any) {
       console.error('Error running tests:', err);
-      alert('Failed to run tests: ' + (err.response?.data?.message || err.message));
-    } finally { setIsRunning(false); }
+      const errorMsg = err.response?.data?.error || err.response?.data?.message || err.message;
+      setError(`Failed to run tests: ${errorMsg}`);
+      alert(`Failed to run tests: ${errorMsg}`);
+    } finally {
+      setIsRunning(false);
+    }
   };
 
   if (!currentProject) return <Loading message="Loading project..." subtitle="Setting up your workspace" />;

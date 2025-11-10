@@ -78,3 +78,37 @@
 .stepDetails { display: flex; align-items: center; gap: 1rem; font-size: 0.8125rem; color: var(--gray-600); }
 .stepPath { font-family: 'Courier New', monospace; }
 .stepDuration { color: var(--gray-500); }
+
+/* Report Actions Styles */
+.reportActions {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 2px solid var(--gray-200);
+  display: flex;
+  justify-content: center;
+}
+
+.viewReportButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1.5rem;
+  background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-600) 100%);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.3);
+}
+
+.viewReportButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.4);
+}
+
+.viewReportButton:active {
+  transform: translateY(0);
+}

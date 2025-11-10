@@ -59,6 +59,23 @@ const TestResults = () => {
     return { completed: styles.passed, failed: styles.failed, in_progress: styles.running }[status] || styles.skipped;
   };
 
+  const handleViewReport = async (runId: string) => {
+    try {
+      const response = await api.executions.getTestReport(runId);
+      const reportUrl = response.data.reportUrl;
+
+      if (reportUrl) {
+        // Open report in new window
+        window.open(reportUrl, '_blank');
+      } else {
+        alert('No report available for this test run yet');
+      }
+    } catch (err: any) {
+      console.error('Error fetching report:', err);
+      alert('Report not found or not yet generated');
+    }
+  };
+
   if (!currentProject) return <Loading message="Loading project..." subtitle="Setting up your workspace" />;
   if (loading) return <Loading message="Loading test results..." subtitle="Fetching execution history" />;
 
@@ -227,6 +244,16 @@ const TestResults = () => {
                       </div>
                     </>
                   )}
+
+                  <div className={styles.reportActions}>
+                    <button
+                      className={styles.viewReportButton}
+                      onClick={() => handleViewReport(run.id)}
+                    >
+                      <span>📊</span>
+                      View Playwright HTML Report
+                    </button>
+                  </div>
 
                   <div className={styles.stepsTimeline}>
                     <div className={styles.timelineTitle}>Execution Summary</div>

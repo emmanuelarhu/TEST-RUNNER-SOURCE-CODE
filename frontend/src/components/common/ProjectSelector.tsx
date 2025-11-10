@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 import { useProject } from '../../contexts/ProjectContext';
+import CreateProjectModal from './CreateProjectModal';
 import styles from './ProjectSelector.module.css';
 
 const ProjectSelector = () => {
-  const { currentProject, projects, setCurrentProject } = useProject();
+  const { currentProject, projects, setCurrentProject, refreshProjects } = useProject();
   const [isOpen, setIsOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown when clicking outside
@@ -24,6 +26,15 @@ const ProjectSelector = () => {
       setCurrentProject(project);
       setIsOpen(false);
     }
+  };
+
+  const handleCreateProject = () => {
+    setIsOpen(false);
+    setIsModalOpen(true);
+  };
+
+  const handleProjectCreated = async () => {
+    await refreshProjects();
   };
 
   if (!currentProject) {
@@ -76,8 +87,20 @@ const ProjectSelector = () => {
               </button>
             ))}
           </div>
+          <div className={styles.dropdownFooter}>
+            <button className={styles.createButton} onClick={handleCreateProject}>
+              <span className={styles.plusIcon}>+</span>
+              Create New Project
+            </button>
+          </div>
         </div>
       )}
+
+      <CreateProjectModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onProjectCreated={handleProjectCreated}
+      />
     </div>
   );
 };
