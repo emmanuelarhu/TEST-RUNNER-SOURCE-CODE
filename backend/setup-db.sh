@@ -1,3 +1,4 @@
+#!/bin/bash
 
 echo "🚀 Test Runner Platform - Database Setup"
 echo "========================================"
@@ -64,7 +65,3 @@ echo "  1. npm install"
 echo "  2. npm run build"
 echo "  3. npm run dev"
 echo ""
-DBSCRIPT
-
-chmod +x /root/test-runner-platform/backend/setup-db.sh
-echo "✅ setup-db.sh created and made executable"
