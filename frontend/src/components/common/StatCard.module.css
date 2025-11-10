@@ -1,0 +1,14 @@
+.statCard { background: white; border-radius: 16px; padding: 1.5rem; border: 1px solid var(--gray-200); transition: all 0.2s; position: relative; overflow: hidden; }
+.statCard::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--primary-500), var(--primary-300)); }
+.statCard:hover { transform: translateY(-2px); box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.1); }
+.statHeader { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+.statLabel { font-size: 0.875rem; font-weight: 500; color: var(--gray-600); }
+.statIcon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; }
+.statIcon.success { background: var(--success-50); color: var(--success-600); }
+.statIcon.error { background: var(--error-50); color: var(--error-600); }
+.statIcon.warning { background: var(--warning-50); color: var(--warning-500); }
+.statIcon.info { background: var(--primary-50); color: var(--primary-600); }
+.statValue { font-size: 2rem; font-weight: 700; color: var(--gray-900); margin-bottom: 0.25rem; }
+.statChange { display: flex; align-items: center; gap: 0.25rem; font-size: 0.875rem; }
+.statChange.positive { color: var(--success-600); }
+.statChange.negative { color: var(--error-600); }

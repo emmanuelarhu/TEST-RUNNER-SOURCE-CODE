@@ -1,0 +1,1793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TestFlow - Modern Test Automation Platform</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-50: #f0f9ff;
+            --primary-100: #e0f2fe;
+            --primary-200: #bae6fd;
+            --primary-300: #7dd3fc;
+            --primary-400: #38bdf8;
+            --primary-500: #0ea5e9;
+            --primary-600: #0284c7;
+            --primary-700: #0369a1;
+            --primary-800: #075985;
+            --primary-900: #0c4a6e;
+            
+            --success-50: #f0fdf4;
+            --success-500: #22c55e;
+            --success-600: #16a34a;
+            
+            --error-50: #fef2f2;
+            --error-500: #ef4444;
+            --error-600: #dc2626;
+            
+            --warning-50: #fffbeb;
+            --warning-500: #f59e0b;
+            
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--gray-50);
+            color: var(--gray-900);
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Layout */
+        .app-layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: white;
+            border-right: 1px solid var(--gray-200);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            z-index: 100;
+        }
+
+        .sidebar-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-700) 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 800;
+            font-size: 1.25rem;
+            box-shadow: 0 4px 6px -1px rgba(14, 165, 233, 0.2);
+        }
+
+        .brand-name {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--gray-900);
+        }
+
+        .brand-tagline {
+            font-size: 0.75rem;
+            color: var(--gray-500);
+            margin-top: -0.25rem;
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            padding: 1.5rem 1rem;
+            overflow-y: auto;
+        }
+
+        .nav-section {
+            margin-bottom: 2rem;
+        }
+
+        .nav-section-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--gray-500);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 0 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            margin-bottom: 0.25rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.15s;
+            color: var(--gray-700);
+            font-size: 0.875rem;
+            font-weight: 500;
+            border: none;
+            background: transparent;
+            width: 100%;
+            text-align: left;
+        }
+
+        .nav-item:hover {
+            background: var(--gray-50);
+            color: var(--gray-900);
+        }
+
+        .nav-item.active {
+            background: var(--primary-50);
+            color: var(--primary-700);
+        }
+
+        .nav-icon {
+            font-size: 1.25rem;
+            width: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .sidebar-footer {
+            padding: 1rem;
+            border-top: 1px solid var(--gray-200);
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .user-profile:hover {
+            background: var(--gray-50);
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-400) 0%, var(--primary-600) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .user-info {
+            flex: 1;
+        }
+
+        .user-name {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--gray-900);
+        }
+
+        .user-role {
+            font-size: 0.75rem;
+            color: var(--gray-500);
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            margin-left: 280px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Top Bar */
+        .top-bar {
+            background: white;
+            border-bottom: 1px solid var(--gray-200);
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            backdrop-filter: blur(10px);
+        }
+
+        .search-container {
+            flex: 1;
+            max-width: 500px;
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 0.625rem 1rem 0.625rem 2.75rem;
+            border: 1px solid var(--gray-300);
+            border-radius: 10px;
+            font-size: 0.875rem;
+            transition: all 0.15s;
+            background: var(--gray-50);
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary-500);
+            background: white;
+            box-shadow: 0 0 0 3px var(--primary-50);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--gray-400);
+            font-size: 1.125rem;
+        }
+
+        .top-bar-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .icon-button {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            border: none;
+            background: var(--gray-100);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+            color: var(--gray-600);
+            position: relative;
+        }
+
+        .icon-button:hover {
+            background: var(--gray-200);
+            color: var(--gray-900);
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            width: 8px;
+            height: 8px;
+            background: var(--error-500);
+            border-radius: 50%;
+            border: 2px solid white;
+        }
+
+        /* Content Area */
+        .content-area {
+            flex: 1;
+            padding: 2rem;
+            overflow-y: auto;
+        }
+
+        .page-header {
+            margin-bottom: 2rem;
+        }
+
+        .page-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--gray-900);
+            margin-bottom: 0.5rem;
+        }
+
+        .page-subtitle {
+            font-size: 1rem;
+            color: var(--gray-600);
+        }
+
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            color: var(--gray-500);
+            margin-bottom: 1rem;
+        }
+
+        .breadcrumb a {
+            color: var(--primary-600);
+            text-decoration: none;
+        }
+
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 16px;
+            padding: 1.5rem;
+            border: 1px solid var(--gray-200);
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary-500), var(--primary-300));
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--gray-600);
+        }
+
+        .stat-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+
+        .stat-icon.success {
+            background: var(--success-50);
+            color: var(--success-600);
+        }
+
+        .stat-icon.error {
+            background: var(--error-50);
+            color: var(--error-600);
+        }
+
+        .stat-icon.warning {
+            background: var(--warning-50);
+            color: var(--warning-500);
+        }
+
+        .stat-icon.info {
+            background: var(--primary-50);
+            color: var(--primary-600);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--gray-900);
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-change {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.875rem;
+        }
+
+        .stat-change.positive {
+            color: var(--success-600);
+        }
+
+        .stat-change.negative {
+            color: var(--error-600);
+        }
+
+        /* Action Bar */
+        .action-bar {
+            background: white;
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            border: 1px solid var(--gray-200);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .filter-label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--gray-700);
+        }
+
+        .select-input {
+            padding: 0.625rem 2.5rem 0.625rem 1rem;
+            border: 1px solid var(--gray-300);
+            border-radius: 8px;
+            font-size: 0.875rem;
+            background: white;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+            background-position: right 0.5rem center;
+            background-repeat: no-repeat;
+            background-size: 1.5em 1.5em;
+            transition: all 0.15s;
+        }
+
+        .select-input:hover {
+            border-color: var(--gray-400);
+        }
+
+        .select-input:focus {
+            outline: none;
+            border-color: var(--primary-500);
+            box-shadow: 0 0 0 3px var(--primary-50);
+        }
+
+        .action-bar-right {
+            margin-left: auto;
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .btn {
+            padding: 0.625rem 1.25rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-600) 100%);
+            color: white;
+            box-shadow: 0 4px 6px -1px rgba(14, 165, 233, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 15px -3px rgba(14, 165, 233, 0.3);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: var(--gray-700);
+            border: 1px solid var(--gray-300);
+        }
+
+        .btn-secondary:hover {
+            background: var(--gray-50);
+            border-color: var(--gray-400);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* Test Suite Cards */
+        .test-suites-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .suite-card {
+            background: white;
+            border-radius: 16px;
+            padding: 1.5rem;
+            border: 1px solid var(--gray-200);
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .suite-card::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-500), var(--primary-300));
+            transform: scaleX(0);
+            transition: transform 0.3s;
+        }
+
+        .suite-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            border-color: var(--primary-200);
+        }
+
+        .suite-card:hover::after {
+            transform: scaleX(1);
+        }
+
+        .suite-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .suite-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.75rem;
+            background: var(--gray-100);
+            flex-shrink: 0;
+        }
+
+        .suite-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .suite-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--gray-900);
+            margin-bottom: 0.25rem;
+        }
+
+        .suite-description {
+            font-size: 0.875rem;
+            color: var(--gray-600);
+            line-height: 1.5;
+        }
+
+        .suite-stats {
+            display: flex;
+            gap: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--gray-100);
+            margin-top: 1rem;
+        }
+
+        .suite-stat {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .suite-stat-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .suite-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+            padding: 0.375rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-top: 0.75rem;
+        }
+
+        .suite-badge.active {
+            background: var(--success-50);
+            color: var(--success-700);
+        }
+
+        .suite-badge.inactive {
+            background: var(--gray-100);
+            color: var(--gray-600);
+        }
+
+        /* Test Results Table */
+        .results-container {
+            background: white;
+            border-radius: 16px;
+            border: 1px solid var(--gray-200);
+            overflow: hidden;
+        }
+
+        .results-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .results-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--gray-900);
+        }
+
+        .results-filters {
+            display: flex;
+            gap: 0.5rem;
+            background: var(--gray-100);
+            padding: 0.25rem;
+            border-radius: 10px;
+        }
+
+        .filter-btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            background: transparent;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+            color: var(--gray-600);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .filter-btn.active {
+            background: white;
+            color: var(--gray-900);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .filter-count {
+            padding: 0.125rem 0.5rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            background: var(--gray-200);
+        }
+
+        .filter-btn.active .filter-count {
+            background: var(--primary-100);
+            color: var(--primary-700);
+        }
+
+        /* Test Row */
+        .test-row {
+            border-bottom: 1px solid var(--gray-100);
+            transition: all 0.15s;
+        }
+
+        .test-row:hover {
+            background: var(--gray-50);
+        }
+
+        .test-row:last-child {
+            border-bottom: none;
+        }
+
+        .test-row-header {
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            cursor: pointer;
+        }
+
+        .test-status-indicator {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.125rem;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .test-status-indicator.passed {
+            background: var(--success-50);
+            color: var(--success-600);
+        }
+
+        .test-status-indicator.failed {
+            background: var(--error-50);
+            color: var(--error-600);
+        }
+
+        .test-status-indicator.running {
+            background: var(--primary-50);
+            color: var(--primary-600);
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .test-main-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .test-name {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--gray-900);
+            margin-bottom: 0.25rem;
+        }
+
+        .test-path {
+            font-size: 0.813rem;
+            color: var(--gray-500);
+            font-family: 'Courier New', monospace;
+        }
+
+        .test-meta {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            font-size: 0.875rem;
+            color: var(--gray-600);
+        }
+
+        .test-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+        }
+
+        .expand-icon {
+            color: var(--gray-400);
+            font-size: 1.25rem;
+            transition: transform 0.2s;
+        }
+
+        .test-row.expanded .expand-icon {
+            transform: rotate(90deg);
+        }
+
+        /* Test Details */
+        .test-details {
+            padding: 1.5rem;
+            background: var(--gray-50);
+            border-top: 1px solid var(--gray-200);
+        }
+
+        .error-panel {
+            background: var(--error-50);
+            border: 1px solid var(--error-200);
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .error-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .error-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: var(--error-500);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+        }
+
+        .error-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--error-900);
+        }
+
+        .error-message {
+            font-family: 'Courier New', monospace;
+            font-size: 0.875rem;
+            color: var(--error-800);
+            line-height: 1.6;
+            padding: 0.75rem;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid var(--error-200);
+        }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+
+        .comparison-box {
+            background: white;
+            border-radius: 12px;
+            padding: 1.25rem;
+            border: 2px solid var(--gray-200);
+        }
+
+        .comparison-box.expected {
+            border-color: var(--success-300);
+        }
+
+        .comparison-box.received {
+            border-color: var(--error-300);
+        }
+
+        .comparison-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+
+        .comparison-label.expected {
+            color: var(--success-700);
+        }
+
+        .comparison-label.received {
+            color: var(--error-700);
+        }
+
+        .comparison-value {
+            font-family: 'Courier New', monospace;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .comparison-value.expected {
+            color: var(--success-600);
+        }
+
+        .comparison-value.received {
+            color: var(--error-600);
+        }
+
+        /* Steps Timeline */
+        .steps-timeline {
+            position: relative;
+        }
+
+        .timeline-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--gray-900);
+            margin-bottom: 1.25rem;
+        }
+
+        .step-item {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            position: relative;
+        }
+
+        .step-item::before {
+            content: '';
+            position: absolute;
+            left: 15px;
+            top: 40px;
+            bottom: -1rem;
+            width: 2px;
+            background: var(--gray-200);
+        }
+
+        .step-item:last-child::before {
+            display: none;
+        }
+
+        .step-indicator {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
+            font-weight: 700;
+            flex-shrink: 0;
+            position: relative;
+            z-index: 1;
+        }
+
+        .step-indicator.passed {
+            background: var(--success-500);
+            color: white;
+        }
+
+        .step-indicator.failed {
+            background: var(--error-500);
+            color: white;
+        }
+
+        .step-content {
+            flex: 1;
+            background: white;
+            border-radius: 10px;
+            padding: 1rem;
+            border: 1px solid var(--gray-200);
+        }
+
+        .step-name {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--gray-900);
+            margin-bottom: 0.375rem;
+        }
+
+        .step-details {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-size: 0.813rem;
+            color: var(--gray-600);
+        }
+
+        .step-path {
+            font-family: 'Courier New', monospace;
+            color: var(--gray-500);
+        }
+
+        .step-duration {
+            color: var(--primary-600);
+            font-weight: 500;
+        }
+
+        /* Loading State */
+        .loading-overlay {
+            background: var(--primary-50);
+            border: 2px solid var(--primary-200);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid var(--primary-200);
+            border-top-color: var(--primary-600);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            flex: 1;
+        }
+
+        .loading-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--primary-900);
+            margin-bottom: 0.25rem;
+        }
+
+        .loading-subtitle {
+            font-size: 0.875rem;
+            color: var(--primary-700);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+        }
+
+        .empty-illustration {
+            font-size: 5rem;
+            margin-bottom: 1.5rem;
+            opacity: 0.4;
+        }
+
+        .empty-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--gray-900);
+            margin-bottom: 0.5rem;
+        }
+
+        .empty-description {
+            font-size: 1rem;
+            color: var(--gray-600);
+            margin-bottom: 2rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .test-suites-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .action-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .action-bar-right {
+                margin-left: 0;
+            }
+
+            .comparison-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Mock Data
+        const testSuites = [
+            {
+                id: 1,
+                name: 'Consumer Web Portal',
+                icon: '🛍️',
+                description: 'End-to-end tests for customer-facing web application',
+                totalTests: 45,
+                passed: 42,
+                failed: 2,
+                skipped: 1,
+                status: 'active',
+                lastRun: '2 hours ago'
+            },
+            {
+                id: 2,
+                name: 'ECG PowerApp',
+                icon: '⚡',
+                description: 'Automated testing suite for energy management system',
+                totalTests: 32,
+                passed: 30,
+                failed: 1,
+                skipped: 1,
+                status: 'active',
+                lastRun: '5 hours ago'
+            },
+            {
+                id: 3,
+                name: 'MA Portal Dashboard',
+                icon: '📊',
+                description: 'Management analytics and reporting interface tests',
+                totalTests: 28,
+                passed: 25,
+                failed: 2,
+                skipped: 1,
+                status: 'active',
+                lastRun: '1 day ago'
+            },
+            {
+                id: 4,
+                name: 'Partners Integration',
+                icon: '🤝',
+                description: 'Partner API and integration testing suite',
+                totalTests: 38,
+                passed: 36,
+                failed: 1,
+                skipped: 1,
+                status: 'active',
+                lastRun: '3 hours ago'
+            },
+        ];
+
+        const testResults = [
+            {
+                id: 1,
+                name: 'Validate payment processing workflow',
+                status: 'failed',
+                duration: '10.2s',
+                path: 'tests/dashboard/dashboard.spec.ts:73',
+                browser: 'Chrome 120',
+                error: 'netPaymentAssert should be equal to netPaymentValues',
+                expected: '3731',
+                received: '3730',
+                steps: [
+                    { name: 'Before Hooks', status: 'passed', duration: '2.1s' },
+                    { name: 'Navigate to dashboard', status: 'passed', duration: '2.8s', path: 'dashboard.spec.ts:75' },
+                    { name: 'Verify daily amount display', status: 'passed', duration: '272ms', path: 'dashboard.spec.ts:80' },
+                    { name: 'Check percentage change indicator', status: 'passed', duration: '49ms', path: 'dashboard.spec.ts:128' },
+                    { name: 'Validate payment trend link', status: 'passed', duration: '23ms', path: 'dashboard.spec.ts:136' },
+                    { name: 'Verify payment visibility', status: 'passed', duration: '127ms', path: 'dashboard.spec.ts:157' },
+                    { name: 'Check value display', status: 'passed', duration: '86ms', path: 'dashboard.spec.ts:174' },
+                    { name: 'Validate payment method summary', status: 'failed', duration: '177ms', path: 'dashboard.spec.ts:218' },
+                ]
+            },
+            {
+                id: 2,
+                name: 'User authentication and session management',
+                status: 'passed',
+                duration: '5.8s',
+                path: 'tests/auth/login.spec.ts:45',
+                browser: 'Chrome 120',
+                steps: [
+                    { name: 'Navigate to login page', status: 'passed', duration: '1.2s' },
+                    { name: 'Enter credentials', status: 'passed', duration: '0.8s' },
+                    { name: 'Click submit button', status: 'passed', duration: '0.5s' },
+                    { name: 'Verify redirect to dashboard', status: 'passed', duration: '2.1s' },
+                    { name: 'Check session token', status: 'passed', duration: '1.2s' },
+                ]
+            },
+            {
+                id: 3,
+                name: 'Data export functionality validation',
+                status: 'passed',
+                duration: '8.4s',
+                path: 'tests/reports/export.spec.ts:92',
+                browser: 'Chrome 120',
+                steps: [
+                    { name: 'Navigate to reports section', status: 'passed', duration: '1.5s' },
+                    { name: 'Select date range', status: 'passed', duration: '0.9s' },
+                    { name: 'Click export button', status: 'passed', duration: '0.6s' },
+                    { name: 'Verify download initiated', status: 'passed', duration: '3.2s' },
+                    { name: 'Validate file format', status: 'passed', duration: '2.2s' },
+                ]
+            },
+        ];
+
+        function TestRunner() {
+            const [currentView, setCurrentView] = useState('dashboard');
+            const [selectedSuite, setSelectedSuite] = useState(null);
+            const [isRunning, setIsRunning] = useState(false);
+            const [tests, setTests] = useState([]);
+            const [filter, setFilter] = useState('all');
+            const [expandedTests, setExpandedTests] = useState(new Set());
+            const [browser, setBrowser] = useState('chrome');
+
+            const runTests = () => {
+                setIsRunning(true);
+                setTests([]);
+                setCurrentView('results');
+                
+                setTimeout(() => {
+                    setTests(testResults);
+                    setIsRunning(false);
+                }, 3000);
+            };
+
+            const toggleTestExpansion = (testId) => {
+                const newExpanded = new Set(expandedTests);
+                if (newExpanded.has(testId)) {
+                    newExpanded.delete(testId);
+                } else {
+                    newExpanded.add(testId);
+                }
+                setExpandedTests(newExpanded);
+            };
+
+            const stats = {
+                total: testResults.length,
+                passed: testResults.filter(t => t.status === 'passed').length,
+                failed: testResults.filter(t => t.status === 'failed').length,
+                passRate: '85%'
+            };
+
+            return (
+                <div className="app-layout">
+                    {/* Sidebar */}
+                    <aside className="sidebar">
+                        <div className="sidebar-header">
+                            <div className="logo-container">
+                                <div className="logo">TF</div>
+                                <div>
+                                    <div className="brand-name">TestFlow</div>
+                                    <div className="brand-tagline">QA Automation Platform</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <nav className="sidebar-nav">
+                            <div className="nav-section">
+                                <div className="nav-section-title">Main</div>
+                                <button 
+                                    className={`nav-item ${currentView === 'dashboard' ? 'active' : ''}`}
+                                    onClick={() => setCurrentView('dashboard')}
+                                >
+                                    <span className="nav-icon">📊</span>
+                                    Dashboard
+                                </button>
+                                <button 
+                                    className={`nav-item ${currentView === 'suites' ? 'active' : ''}`}
+                                    onClick={() => setCurrentView('suites')}
+                                >
+                                    <span className="nav-icon">📁</span>
+                                    Test Suites
+                                </button>
+                                <button 
+                                    className={`nav-item ${currentView === 'results' ? 'active' : ''}`}
+                                    onClick={() => setCurrentView('results')}
+                                >
+                                    <span className="nav-icon">📈</span>
+                                    Test Results
+                                </button>
+                            </div>
+
+                            <div className="nav-section">
+                                <div className="nav-section-title">Execution</div>
+                                <button className="nav-item">
+                                    <span className="nav-icon">🚀</span>
+                                    Run Queue
+                                </button>
+                                <button className="nav-item">
+                                    <span className="nav-icon">📅</span>
+                                    Schedules
+                                </button>
+                                <button className="nav-item">
+                                    <span className="nav-icon">⚙️</span>
+                                    Configuration
+                                </button>
+                            </div>
+
+                            <div className="nav-section">
+                                <div className="nav-section-title">Reports</div>
+                                <button className="nav-item">
+                                    <span className="nav-icon">📊</span>
+                                    Analytics
+                                </button>
+                                <button className="nav-item">
+                                    <span className="nav-icon">📑</span>
+                                    Reports
+                                </button>
+                            </div>
+                        </nav>
+
+                        <div className="sidebar-footer">
+                            <div className="user-profile">
+                                <div className="user-avatar">EA</div>
+                                <div className="user-info">
+                                    <div className="user-name">Emmanuel Arhu</div>
+                                    <div className="user-role">QA Engineer</div>
+                                </div>
+                            </div>
+                        </div>
+                    </aside>
+
+                    {/* Main Content */}
+                    <main className="main-content">
+                        {/* Top Bar */}
+                        <div className="top-bar">
+                            <div className="search-container">
+                                <span className="search-icon">🔍</span>
+                                <input 
+                                    type="text" 
+                                    className="search-input" 
+                                    placeholder="Search tests, suites, or results..."
+                                />
+                            </div>
+
+                            <div className="top-bar-actions">
+                                <button className="icon-button">
+                                    <span>🔔</span>
+                                    <span className="notification-badge"></span>
+                                </button>
+                                <button className="icon-button">
+                                    <span>⚙️</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Content Area */}
+                        <div className="content-area">
+                            {currentView === 'dashboard' && (
+                                <>
+                                    <div className="page-header">
+                                        <div className="breadcrumb">
+                                            <span>Home</span>
+                                            <span>›</span>
+                                            <span>Dashboard</span>
+                                        </div>
+                                        <h1 className="page-title">Test Automation Dashboard</h1>
+                                        <p className="page-subtitle">Monitor your test execution and quality metrics</p>
+                                    </div>
+
+                                    {/* Stats Cards */}
+                                    <div className="stats-grid">
+                                        <div className="stat-card">
+                                            <div className="stat-header">
+                                                <span className="stat-label">Total Tests</span>
+                                                <div className="stat-icon info">
+                                                    <span>📝</span>
+                                                </div>
+                                            </div>
+                                            <div className="stat-value">143</div>
+                                            <div className="stat-change positive">
+                                                <span>↑</span>
+                                                <span>12% from last week</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="stat-card">
+                                            <div className="stat-header">
+                                                <span className="stat-label">Tests Passed</span>
+                                                <div className="stat-icon success">
+                                                    <span>✓</span>
+                                                </div>
+                                            </div>
+                                            <div className="stat-value">133</div>
+                                            <div className="stat-change positive">
+                                                <span>↑</span>
+                                                <span>8% improvement</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="stat-card">
+                                            <div className="stat-header">
+                                                <span className="stat-label">Tests Failed</span>
+                                                <div className="stat-icon error">
+                                                    <span>✗</span>
+                                                </div>
+                                            </div>
+                                            <div className="stat-value">6</div>
+                                            <div className="stat-change negative">
+                                                <span>↓</span>
+                                                <span>2 more than yesterday</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="stat-card">
+                                            <div className="stat-header">
+                                                <span className="stat-label">Success Rate</span>
+                                                <div className="stat-icon warning">
+                                                    <span>📊</span>
+                                                </div>
+                                            </div>
+                                            <div className="stat-value">93%</div>
+                                            <div className="stat-change positive">
+                                                <span>↑</span>
+                                                <span>Stable performance</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Test Suites Grid */}
+                                    <div className="page-header" style={{ marginTop: '2rem' }}>
+                                        <h2 className="page-title" style={{ fontSize: '1.5rem' }}>Recent Test Suites</h2>
+                                        <p className="page-subtitle">Click on a suite to view details</p>
+                                    </div>
+
+                                    <div className="test-suites-grid">
+                                        {testSuites.map(suite => (
+                                            <div 
+                                                key={suite.id} 
+                                                className="suite-card"
+                                                onClick={() => {
+                                                    setSelectedSuite(suite);
+                                                    setCurrentView('suites');
+                                                }}
+                                            >
+                                                <div className="suite-header">
+                                                    <div className="suite-icon">
+                                                        {suite.icon}
+                                                    </div>
+                                                    <div className="suite-info">
+                                                        <div className="suite-title">{suite.name}</div>
+                                                        <div className="suite-description">{suite.description}</div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="suite-stats">
+                                                    <div className="suite-stat">
+                                                        <div className="suite-stat-icon" style={{ background: 'var(--success-50)', color: 'var(--success-600)' }}>
+                                                            ✓
+                                                        </div>
+                                                        <span>{suite.passed}</span>
+                                                    </div>
+                                                    <div className="suite-stat">
+                                                        <div className="suite-stat-icon" style={{ background: 'var(--error-50)', color: 'var(--error-600)' }}>
+                                                            ✗
+                                                        </div>
+                                                        <span>{suite.failed}</span>
+                                                    </div>
+                                                    <div className="suite-stat">
+                                                        <div className="suite-stat-icon" style={{ background: 'var(--gray-100)', color: 'var(--gray-600)' }}>
+                                                            ⊘
+                                                        </div>
+                                                        <span>{suite.skipped}</span>
+                                                    </div>
+                                                </div>
+
+                                                <div className={`suite-badge ${suite.status}`}>
+                                                    <span>●</span>
+                                                    <span>{suite.status}</span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
+
+                            {currentView === 'suites' && (
+                                <>
+                                    <div className="page-header">
+                                        <div className="breadcrumb">
+                                            <a onClick={() => setCurrentView('dashboard')}>Home</a>
+                                            <span>›</span>
+                                            <span>Test Suites</span>
+                                        </div>
+                                        <h1 className="page-title">Test Suites</h1>
+                                        <p className="page-subtitle">Manage and execute your test collections</p>
+                                    </div>
+
+                                    <div className="action-bar">
+                                        <div className="filter-group">
+                                            <span className="filter-label">Browser:</span>
+                                            <select 
+                                                className="select-input"
+                                                value={browser}
+                                                onChange={(e) => setBrowser(e.target.value)}
+                                            >
+                                                <option value="chrome">Chrome</option>
+                                                <option value="firefox">Firefox</option>
+                                                <option value="safari">Safari</option>
+                                                <option value="edge">Edge</option>
+                                            </select>
+                                        </div>
+
+                                        <div className="filter-group">
+                                            <span className="filter-label">Environment:</span>
+                                            <select className="select-input">
+                                                <option>Production</option>
+                                                <option>Staging</option>
+                                                <option>Development</option>
+                                            </select>
+                                        </div>
+
+                                        <div className="action-bar-right">
+                                            <button className="btn btn-secondary">
+                                                <span>⚙️</span>
+                                                Configure
+                                            </button>
+                                            <button 
+                                                className="btn btn-primary"
+                                                onClick={runTests}
+                                                disabled={isRunning}
+                                            >
+                                                <span>▶</span>
+                                                {isRunning ? 'Running...' : 'Run Tests'}
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="test-suites-grid">
+                                        {testSuites.map(suite => (
+                                            <div key={suite.id} className="suite-card">
+                                                <div className="suite-header">
+                                                    <div className="suite-icon">
+                                                        {suite.icon}
+                                                    </div>
+                                                    <div className="suite-info">
+                                                        <div className="suite-title">{suite.name}</div>
+                                                        <div className="suite-description">{suite.description}</div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="suite-stats">
+                                                    <div className="suite-stat">
+                                                        <div className="suite-stat-icon" style={{ background: 'var(--success-50)', color: 'var(--success-600)' }}>
+                                                            ✓
+                                                        </div>
+                                                        <span>{suite.passed}</span>
+                                                    </div>
+                                                    <div className="suite-stat">
+                                                        <div className="suite-stat-icon" style={{ background: 'var(--error-50)', color: 'var(--error-600)' }}>
+                                                            ✗
+                                                        </div>
+                                                        <span>{suite.failed}</span>
+                                                    </div>
+                                                    <div className="suite-stat">
+                                                        <div className="suite-stat-icon" style={{ background: 'var(--gray-100)', color: 'var(--gray-600)' }}>
+                                                            ⊘
+                                                        </div>
+                                                        <span>{suite.skipped}</span>
+                                                    </div>
+                                                </div>
+
+                                                <div className={`suite-badge ${suite.status}`}>
+                                                    <span>●</span>
+                                                    <span>{suite.status} • Last run {suite.lastRun}</span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
+
+                            {currentView === 'results' && (
+                                <>
+                                    <div className="page-header">
+                                        <div className="breadcrumb">
+                                            <a onClick={() => setCurrentView('dashboard')}>Home</a>
+                                            <span>›</span>
+                                            <span>Test Results</span>
+                                        </div>
+                                        <h1 className="page-title">Test Execution Results</h1>
+                                        <p className="page-subtitle">Detailed test run analysis and debugging</p>
+                                    </div>
+
+                                    {isRunning && (
+                                        <div className="loading-overlay">
+                                            <div className="spinner"></div>
+                                            <div className="loading-text">
+                                                <div className="loading-title">Running tests on {browser}...</div>
+                                                <div className="loading-subtitle">This may take a few moments</div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {tests.length > 0 && (
+                                        <div className="results-container">
+                                            <div className="results-header">
+                                                <div className="results-title">Test Results</div>
+                                                <div className="results-filters">
+                                                    <button 
+                                                        className={`filter-btn ${filter === 'all' ? 'active' : ''}`}
+                                                        onClick={() => setFilter('all')}
+                                                    >
+                                                        All
+                                                        <span className="filter-count">{tests.length}</span>
+                                                    </button>
+                                                    <button 
+                                                        className={`filter-btn ${filter === 'passed' ? 'active' : ''}`}
+                                                        onClick={() => setFilter('passed')}
+                                                    >
+                                                        ✓ Passed
+                                                        <span className="filter-count">{tests.filter(t => t.status === 'passed').length}</span>
+                                                    </button>
+                                                    <button 
+                                                        className={`filter-btn ${filter === 'failed' ? 'active' : ''}`}
+                                                        onClick={() => setFilter('failed')}
+                                                    >
+                                                        ✗ Failed
+                                                        <span className="filter-count">{tests.filter(t => t.status === 'failed').length}</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {tests
+                                                .filter(test => filter === 'all' || test.status === filter)
+                                                .map(test => (
+                                                <div 
+                                                    key={test.id} 
+                                                    className={`test-row ${expandedTests.has(test.id) ? 'expanded' : ''}`}
+                                                >
+                                                    <div 
+                                                        className="test-row-header"
+                                                        onClick={() => toggleTestExpansion(test.id)}
+                                                    >
+                                                        <div className={`test-status-indicator ${test.status}`}>
+                                                            {test.status === 'passed' ? '✓' : '✗'}
+                                                        </div>
+
+                                                        <div className="test-main-info">
+                                                            <div className="test-name">{test.name}</div>
+                                                            <div className="test-path">{test.path}</div>
+                                                        </div>
+
+                                                        <div className="test-meta">
+                                                            <div className="test-meta-item">
+                                                                <span>🌐</span>
+                                                                <span>{test.browser}</span>
+                                                            </div>
+                                                            <div className="test-meta-item">
+                                                                <span>⏱️</span>
+                                                                <span>{test.duration}</span>
+                                                            </div>
+                                                        </div>
+
+                                                        <span className="expand-icon">›</span>
+                                                    </div>
+
+                                                    {expandedTests.has(test.id) && (
+                                                        <div className="test-details">
+                                                            {test.error && (
+                                                                <>
+                                                                    <div className="error-panel">
+                                                                        <div className="error-header">
+                                                                            <div className="error-icon">!</div>
+                                                                            <div className="error-title">Assertion Failed</div>
+                                                                        </div>
+                                                                        <div className="error-message">
+                                                                            {test.error}
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <div className="comparison-grid">
+                                                                        <div className="comparison-box expected">
+                                                                            <div className="comparison-label expected">
+                                                                                Expected Value
+                                                                            </div>
+                                                                            <div className="comparison-value expected">
+                                                                                {test.expected}
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="comparison-box received">
+                                                                            <div className="comparison-label received">
+                                                                                Received Value
+                                                                            </div>
+                                                                            <div className="comparison-value received">
+                                                                                {test.received}
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </>
+                                                            )}
+
+                                                            <div className="steps-timeline">
+                                                                <div className="timeline-title">Execution Steps</div>
+                                                                {test.steps.map((step, index) => (
+                                                                    <div key={index} className="step-item">
+                                                                        <div className={`step-indicator ${step.status}`}>
+                                                                            {step.status === 'passed' ? '✓' : '✗'}
+                                                                        </div>
+                                                                        <div className="step-content">
+                                                                            <div className="step-name">{step.name}</div>
+                                                                            <div className="step-details">
+                                                                                {step.path && (
+                                                                                    <span className="step-path">{step.path}</span>
+                                                                                )}
+                                                                                <span className="step-duration">{step.duration}</span>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {tests.length === 0 && !isRunning && (
+                                        <div className="empty-state">
+                                            <div className="empty-illustration">🧪</div>
+                                            <div className="empty-title">No Test Results Yet</div>
+                                            <div className="empty-description">
+                                                Run your first test suite to see detailed results here
+                                            </div>
+                                            <button 
+                                                className="btn btn-primary"
+                                                onClick={() => setCurrentView('suites')}
+                                            >
+                                                <span>📁</span>
+                                                Go to Test Suites
+                                            </button>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </div>
+                    </main>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<TestRunner />, document.getElementById('root'));
+    </script>
+</body>
+</html>

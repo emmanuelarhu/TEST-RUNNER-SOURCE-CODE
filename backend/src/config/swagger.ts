@@ -6,18 +6,15 @@ const options: swaggerJsdoc.Options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'Test Runner Platform API',
+      title: 'Test Automation Runner Platform API',
       version: '1.0.0',
-      description: 'A comprehensive test automation platform with Playwright integration',
+      description: 'A test automation runner platform with Playwright integration',
       contact: {
-        name: 'Emmanuel Arhu',
-        email: 'emmanuel@example.com',
-        url: 'https://emmanuelarhu.link'
+        name: 'Hubtel QA Automation Team',// 'Emmanuel Arhu',
+        email: 'pius.deri@hubtel.com', //'emmanuel.arhu@hubtel.com',
+        url: 'https://qa-portal.hubtel.com/',//'https://emmanuelarhu.link'
       },
-      license: {
-        name: 'MIT',
-        url: 'https://opensource.org/licenses/MIT'
-      }
+      
     },
     servers: [
       {
@@ -127,9 +124,21 @@ const options: swaggerJsdoc.Options = {
             }
           }
         }
+      },
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+          description: 'Enter JWT token obtained from /users/login or /users/register endpoint'
+        }
       }
     },
     tags: [
+      {
+        name: 'Users',
+        description: 'User authentication and management endpoints'
+      },
       {
         name: 'Projects',
         description: 'Project management endpoints'

@@ -131,7 +131,7 @@ export class ProjectController {
           (SELECT COUNT(*) FROM project_executions WHERE status = 'passed') as passed_executions,
           (SELECT COUNT(*) FROM project_executions WHERE status = 'failed') as failed_executions,
           (SELECT COUNT(*) FROM project_executions WHERE status = 'running') as running_executions,
-          (SELECT AVG(duration) FROM project_executions WHERE status IN ('passed', 'failed')) as avg_duration
+          (SELECT AVG(duration_ms) FROM project_executions WHERE status IN ('passed', 'failed')) as avg_duration
       `;
 
       const statsResult = await pool.query(statsQuery, [id]);

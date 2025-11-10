@@ -1,0 +1,4 @@
+.appLayout { display: flex; min-height: 100vh; }
+.mainContent { flex: 1; margin-left: 280px; display: flex; flex-direction: column; }
+.contentArea { flex: 1; padding: 2rem; overflow-y: auto; }
+@media (max-width: 1024px) { .mainContent { margin-left: 0; } }

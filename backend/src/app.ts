@@ -5,15 +5,19 @@ import { Server } from 'socket.io';
 import http from 'http';
 import path from 'path';
 
+
 // Config
 import logger from './config/logger';
 import { initializeDatabase } from './models/database.schema';
+import { seedDatabase } from './seed-data';
 import { setupSwagger } from './config/swagger';
 
 // Routes
 import projectRoutes from './routes/project.routes';
 import executionRoutes from './routes/execution.routes';
 import testRoutes from './routes/test.routes';
+import userRoutes from './routes/user.routes';
+import playwrightRoutes from './routes/playwright.routes';
 
 // Middleware
 import { errorHandler, notFoundHandler } from './middleware/error.middleware';
@@ -57,6 +61,7 @@ class App {
 
     // Static files (for screenshots and videos)
     this.app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+    this.app.use('/reports', express.static(path.join(__dirname, '../public/reports')));
 
     // Swagger documentation
     setupSwagger(this.app);
@@ -85,6 +90,9 @@ class App {
     this.app.use(`/api/${apiVersion}/projects`, projectRoutes);
     this.app.use(`/api/${apiVersion}/executions`, executionRoutes);
     this.app.use(`/api/${apiVersion}/tests`, testRoutes);
+    this.app.use(`/api/${apiVersion}/users`, userRoutes);
+    this.app.use(`/api/${apiVersion}/playwright`, playwrightRoutes);
+
 
     // Root route
     this.app.get('/', (req, res) => {
@@ -100,6 +108,7 @@ class App {
           projects: `/api/${apiVersion}/projects`,
           tests: `/api/${apiVersion}/tests`,
           executions: `/api/${apiVersion}/executions`,
+          users: `/api/${apiVersion}/users`,
           health: '/health'
         }
       });
@@ -134,6 +143,9 @@ class App {
     try {
       // Initialize database
       await initializeDatabase();
+
+      // Seed database with sample data (only if empty)
+      await seedDatabase();
 
       // Start server
       this.server.listen(this.port, () => {
