@@ -280,13 +280,30 @@ export class TestExecutionController {
 
       logger.info(`Repository cloned successfully to: ${projectPath}`);
 
+      // Automatically discover and sync tests from the cloned repository
+      logger.info('Starting automatic test discovery...');
+      let testDiscoveryResult = null;
+      try {
+        const testDiscoveryService = require('../services/test-discovery.service').default;
+        testDiscoveryResult = await testDiscoveryService.syncTestsToDatabase(projectId, projectName);
+        logger.info(`Test discovery completed: ${testDiscoveryResult.suitesCreated} suites, ${testDiscoveryResult.testsCreated} tests`);
+      } catch (discoveryError: any) {
+        logger.warn(`Test discovery failed (non-critical): ${discoveryError.message}`);
+        // Don't fail the clone operation if test discovery fails
+      }
+
       res.json({
         success: true,
         message: 'Repository cloned successfully',
         data: {
           projectPath,
           projectName,
-          branch
+          branch,
+          testDiscovery: testDiscoveryResult || {
+            suitesCreated: 0,
+            testsCreated: 0,
+            note: 'Test discovery was skipped or failed'
+          }
         }
       });
     } catch (error: any) {

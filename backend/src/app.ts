@@ -18,6 +18,7 @@ import executionRoutes from './routes/execution.routes';
 import testRoutes from './routes/test.routes';
 import userRoutes from './routes/user.routes';
 import playwrightRoutes from './routes/playwright.routes';
+import testDiscoveryRoutes from './routes/test-discovery.routes';
 
 // Middleware
 import { errorHandler, notFoundHandler } from './middleware/error.middleware';
@@ -133,6 +134,7 @@ class App {
     this.app.use(`/api/${apiVersion}/tests`, testRoutes);
     this.app.use(`/api/${apiVersion}/users`, userRoutes);
     this.app.use(`/api/${apiVersion}/playwright`, playwrightRoutes);
+    this.app.use(`/api/${apiVersion}/test-discovery`, testDiscoveryRoutes);
 
 
     // Root route
