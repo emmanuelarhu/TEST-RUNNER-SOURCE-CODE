@@ -53,9 +53,19 @@ const CreateProjectModal = ({ isOpen, onClose, onProjectCreated }: CreateProject
         onProjectCreated();
         onClose();
       }, 1000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error creating project:', err);
-      setError(err.response?.data?.message || 'Failed to create project');
+      // Normalize error to extract a meaningful message without using `any`
+      let message = 'Failed to create project';
+      if (typeof err === 'string') {
+        message = err;
+      } else if (err instanceof Error) {
+        message = err.message || message;
+      } else if (typeof err === 'object' && err !== null) {
+        const e = err as { response?: { data?: { message?: string } }; message?: string };
+        message = e.response?.data?.message || e.message || message;
+      }
+      setError(message);
     } finally {
       setLoading(false);
     }
