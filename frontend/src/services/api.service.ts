@@ -33,9 +33,16 @@ export const executionApi = {
   executeProject: (projectId: string, data?: { browser?: string; headless?: boolean; workers?: number }) => apiClient.post<TestRun>(`/executions/project/${projectId}/execute`, data),
   cloneRepository: (projectId: string, data: { repoUrl: string; branch?: string }) => apiClient.post(`/executions/project/${projectId}/clone`, data),
   getTestReport: (runId: string) => apiClient.get<{ reportPath: string; reportUrl: string }>(`/executions/run/${runId}/report`),
+  getLatestReport: (projectId: string) => apiClient.get<any>(`/executions/project/${projectId}/latest-report`),
   getExecutionHistory: (testCaseId: string, limit?: number) => apiClient.get<ApiResponse<TestExecution[]>>(`/executions/test-case/${testCaseId}/history`, { params: { limit } }),
   getTestRun: (runId: string) => apiClient.get<TestRun>(`/executions/run/${runId}`),
   getProjectTestRuns: (projectId: string, limit?: number) => apiClient.get<ApiResponse<TestRun[]>>(`/executions/project/${projectId}/runs`, { params: { limit } }),
+};
+
+export const testDiscoveryApi = {
+  syncTests: (projectId: string) => apiClient.post(`/test-discovery/project/${projectId}/sync`),
+  getTestFiles: (projectId: string) => apiClient.get(`/test-discovery/project/${projectId}/files`),
+  getTestStats: (projectId: string) => apiClient.get(`/test-discovery/project/${projectId}/stats`),
 };
 
 export const healthApi = {
@@ -59,6 +66,7 @@ const api = {
   testSuites: testSuiteApi,
   testCases: testCaseApi,
   executions: executionApi,
+  testDiscovery: testDiscoveryApi,
   health: healthApi,
   users: userApi,
 };

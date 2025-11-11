@@ -4,7 +4,7 @@ import MainLayout from './components/layout/MainLayout';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
-import ProjectDetail from './pages/ProjectDetail';
+import ProjectDetailEnhanced from './pages/ProjectDetailEnhanced';
 import TestSuites from './pages/TestSuites';
 import TestSuiteDetail from './pages/TestSuiteDetail';
 import TestResults from './pages/TestResults';
@@ -25,7 +25,7 @@ function App() {
           <Route element={<ProjectProvider><MainLayout /></ProjectProvider>}>
             <Route index element={<Dashboard />} />
             <Route path="dashboard" element={<Dashboard />} />
-            <Route path="project/:projectId" element={<ProjectDetail />} />
+            <Route path="project/:projectId" element={<ProjectDetailEnhanced />} />
             <Route path="suites" element={<TestSuites />} />
             <Route path="suites/:id" element={<TestSuiteDetail />} />
             <Route path="results" element={<TestResults />} />
