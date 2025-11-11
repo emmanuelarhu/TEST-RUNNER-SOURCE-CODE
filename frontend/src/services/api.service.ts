@@ -1,4 +1,5 @@
-import apiClient from './api.config';
+import apiClient, { API_BASE_URL } from './api.config';
+import axios from 'axios';
 import type { ApiResponse, Project, TestSuite, TestCase, TestRun, TestExecution, CreateProjectDTO, CreateTestSuiteDTO, CreateTestCaseDTO, ExecuteTestDTO } from '../types';
 
 export const projectApi = {
@@ -38,7 +39,8 @@ export const executionApi = {
 };
 
 export const healthApi = {
-  check: () => apiClient.get('/health'),
+  // Health endpoint is at root level, not under /api/v1
+  check: () => axios.get(`${API_BASE_URL}/health`),
 };
 
 export const userApi = {
