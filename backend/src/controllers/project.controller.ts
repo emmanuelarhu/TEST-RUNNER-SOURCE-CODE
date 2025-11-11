@@ -267,17 +267,17 @@ export class ProjectController {
   async updateProject(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const { name, description, base_url, status } = req.body;
+      const { name, description, base_url } = req.body;
 
       const result = await pool.query(
         `UPDATE projects
          SET name = COALESCE($1, name),
              description = COALESCE($2, description),
              base_url = COALESCE($3, base_url),
-             status = COALESCE($4, status)
-         WHERE id = $5
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = $4
          RETURNING *`,
-        [name, description, base_url, status, id]
+        [name, description, base_url, id]
       );
 
       if (result.rows.length === 0) {
