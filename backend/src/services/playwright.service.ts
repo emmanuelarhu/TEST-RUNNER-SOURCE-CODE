@@ -244,8 +244,8 @@ class PlaywrightService {
       playwrightCmd += headed ? ` --headed` : '';
       playwrightCmd += ` --reporter=html,list`;
 
-      // Complete command with environment variables
-      const fullCommand = `${envVars.join(' ')} ${playwrightCmd}`;
+      // Complete command with environment variables (using cross-env for Windows compatibility)
+      const fullCommand = `npx cross-env ${envVars.join(' ')} ${playwrightCmd}`;
 
       const startTime = Date.now();
       let testResult: TestResult;
