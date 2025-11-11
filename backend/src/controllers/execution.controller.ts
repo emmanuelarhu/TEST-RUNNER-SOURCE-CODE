@@ -214,6 +214,39 @@ export class TestExecutionController {
       const { projectId } = req.params;
       const { repoUrl, branch = 'main' } = req.body;
 
+      // Validate request body
+      if (!repoUrl || !repoUrl.trim()) {
+        res.status(400).json({
+          success: false,
+          message: 'Repository URL is required'
+        });
+        return;
+      }
+
+      // Validate repoUrl format
+      try {
+        const url = new URL(repoUrl.replace(/^https:\/\/[^@]+@/, 'https://'));
+        const validHosts = ['github.com', 'gitlab.com', 'dev.azure.com', 'bitbucket.org'];
+        if (!validHosts.some(host => url.hostname.includes(host))) {
+          logger.warn(`Repository URL uses non-standard host: ${url.hostname}`);
+        }
+      } catch (urlError) {
+        res.status(400).json({
+          success: false,
+          message: 'Invalid repository URL format. Expected a valid Git repository URL (GitHub, GitLab, Azure DevOps, or Bitbucket)'
+        });
+        return;
+      }
+
+      // Validate branch name
+      if (branch && !/^[a-zA-Z0-9._\/-]+$/.test(branch)) {
+        res.status(400).json({
+          success: false,
+          message: 'Invalid branch name. Branch names can only contain letters, numbers, dots, hyphens, underscores, and forward slashes'
+        });
+        return;
+      }
+
       // Get project details
       const projectResult = await pool.query(
         'SELECT name FROM projects WHERE id = $1',
@@ -230,7 +263,7 @@ export class TestExecutionController {
 
       const projectName = projectResult.rows[0].name;
 
-      logger.info(`Cloning repository for project: ${projectName}`);
+      logger.info(`Cloning repository for project: ${projectName}, branch: ${branch}`);
 
       // Clone repository
       const projectPath = await playwrightService.cloneRepository(
@@ -245,16 +278,40 @@ export class TestExecutionController {
         [repoUrl, projectId]
       );
 
+      logger.info(`Repository cloned successfully to: ${projectPath}`);
+
       res.json({
         success: true,
         message: 'Repository cloned successfully',
-        data: { projectPath, projectName }
+        data: {
+          projectPath,
+          projectName,
+          branch
+        }
       });
     } catch (error: any) {
       logger.error('Error cloning repository:', error);
-      res.status(500).json({
+
+      // Provide more specific error messages
+      let errorMessage = 'Failed to clone repository';
+      let statusCode = 500;
+
+      if (error.message.includes('Authentication failed') || error.message.includes('authentication')) {
+        errorMessage = error.message;
+        statusCode = 401;
+      } else if (error.message.includes('not found') || error.message.includes('does not exist')) {
+        errorMessage = error.message;
+        statusCode = 404;
+      } else if (error.message.includes('timeout') || error.message.includes('timed out')) {
+        errorMessage = error.message;
+        statusCode = 408;
+      } else {
+        errorMessage = error.message || 'An unexpected error occurred while cloning the repository';
+      }
+
+      res.status(statusCode).json({
         success: false,
-        message: 'Failed to clone repository',
+        message: errorMessage,
         error: error.message
       });
     }
