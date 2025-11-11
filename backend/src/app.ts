@@ -36,8 +36,22 @@ class App {
     this.server = http.createServer(this.app);
     this.io = new Server(this.server, {
       cors: {
-        origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
-        methods: ['GET', 'POST', 'PUT', 'DELETE']
+        origin: (origin, callback) => {
+          // Allow all localhost origins in development
+          if (process.env.NODE_ENV === 'development' && (!origin || origin.includes('localhost'))) {
+            return callback(null, true);
+          }
+
+          // Production: only allow specified origin
+          const allowedOrigin = process.env.CORS_ORIGIN || 'http://localhost:3000';
+          if (origin === allowedOrigin) {
+            return callback(null, true);
+          }
+
+          return callback(new Error('Not allowed by CORS'));
+        },
+        methods: ['GET', 'POST', 'PUT', 'DELETE'],
+        credentials: true
       }
     });
     this.port = parseInt(process.env.PORT || '5000');
@@ -49,10 +63,34 @@ class App {
   }
 
   private initializeMiddlewares(): void {
-    // CORS
+    // CORS - Allow multiple origins for development
+    const allowedOrigins = [
+      process.env.CORS_ORIGIN || 'http://localhost:5173',
+      'http://localhost:5000', // Backend/Swagger origin
+      'http://localhost:3000'  // Alternative frontend origin
+    ];
+
     this.app.use(cors({
-      origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
-      credentials: true
+      origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps, curl, Postman)
+        if (!origin) return callback(null, true);
+
+        // In development, allow all localhost origins
+        if (process.env.NODE_ENV === 'development' && origin.includes('localhost')) {
+          return callback(null, true);
+        }
+
+        // Check if the origin is in the allowed list
+        if (allowedOrigins.includes(origin)) {
+          return callback(null, true);
+        }
+
+        // Reject other origins
+        return callback(new Error('Not allowed by CORS'));
+      },
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
     }));
 
     // Body parser
