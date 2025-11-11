@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard';
 import TestSuites from './pages/TestSuites';
 import TestSuiteDetail from './pages/TestSuiteDetail';
 import TestResults from './pages/TestResults';
+import Settings from './pages/Settings';
 import './styles/index.css';
 
 function App() {
@@ -23,6 +24,7 @@ function App() {
             <Route path="suites" element={<TestSuites />} />
             <Route path="suites/:id" element={<TestSuiteDetail />} />
             <Route path="results" element={<TestResults />} />
+            <Route path="settings" element={<Settings />} />
           </Route>
         </Route>
 
