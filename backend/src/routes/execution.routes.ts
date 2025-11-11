@@ -192,4 +192,64 @@ router.get('/run/:runId', executionController.getTestRun.bind(executionControlle
  */
 router.get('/project/:projectId/runs', executionController.getProjectTestRuns.bind(executionController));
 
+/**
+ * @swagger
+ * /api/v1/executions/project/{projectId}/latest-report:
+ *   get:
+ *     summary: Get the latest test run and report for a project
+ *     tags: [Execution]
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Latest test run and report retrieved
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     projectName:
+ *                       type: string
+ *                     testRun:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                         run_name:
+ *                           type: string
+ *                         status:
+ *                           type: string
+ *                         total_tests:
+ *                           type: integer
+ *                         passed_tests:
+ *                           type: integer
+ *                         failed_tests:
+ *                           type: integer
+ *                         skipped_tests:
+ *                           type: integer
+ *                         duration_ms:
+ *                           type: integer
+ *                         browser:
+ *                           type: string
+ *                         reportPath:
+ *                           type: string
+ *                         reportUrl:
+ *                           type: string
+ *       404:
+ *         description: Project not found or no test runs available
+ */
+router.get('/project/:projectId/latest-report', executionController.getLatestReport.bind(executionController));
+
 export default router;
