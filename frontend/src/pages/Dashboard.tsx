@@ -12,6 +12,7 @@ const Dashboard = () => {
   const { currentProject } = useProject();
   const [loading, setLoading] = useState(true);
   const [testSuites, setTestSuites] = useState<TestSuite[]>([]);
+  const [stats, setStats] = useState({ total: 0, passed: 0, failed: 0, skipped: 0, passRate: '0%' });
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -26,15 +27,27 @@ const Dashboard = () => {
     try {
       setLoading(true);
       setError(null);
-      const suitesResponse = await api.testSuites.getByProject(currentProject.id);
+      const [suitesResponse, statsResponse] = await Promise.all([
+        api.testSuites.getByProject(currentProject.id),
+        api.projects.getStats(currentProject.id).catch(() => ({ data: null }))
+      ]);
       setTestSuites(suitesResponse.data);
+
+      // Use real stats if available, otherwise use calculated stats
+      if (statsResponse.data) {
+        // Real stats from backend
+        const { totalTests, passedTests, failedTests, skippedTests } = statsResponse.data;
+        const total = totalTests || 0;
+        const passed = passedTests || 0;
+        const failed = failedTests || 0;
+        const passRate = total > 0 ? `${Math.round((passed / total) * 100)}%` : '0%';
+        setStats({ total, passed, failed, skipped: skippedTests || 0, passRate });
+      }
     } catch (err: any) {
       console.error('Error fetching dashboard data:', err);
       setError(err.response?.data?.message || 'Failed to load dashboard data');
     } finally { setLoading(false); }
   };
-
-  const stats = { total: testSuites.length * 10, passed: testSuites.length * 8, failed: testSuites.length * 2, passRate: testSuites.length > 0 ? '80%' : '0%' };
 
   if (!currentProject) return <Loading message="Loading project..." subtitle="Setting up your workspace" />;
   if (loading) return <Loading message="Loading dashboard..." subtitle="Fetching your test data" />;
@@ -48,10 +61,10 @@ const Dashboard = () => {
         <p className={styles.pageSubtitle}>Monitor your test execution and quality metrics</p>
       </div>
       <div className={styles.statsGrid}>
-        <StatCard label="Total Tests" value={stats.total} icon="📝" iconType="info" change={{ value: '12% from last week', isPositive: true }} />
-        <StatCard label="Tests Passed" value={stats.passed} icon="✓" iconType="success" change={{ value: '8% improvement', isPositive: true }} />
-        <StatCard label="Tests Failed" value={stats.failed} icon="✗" iconType="error" change={{ value: '2 more than yesterday', isPositive: false }} />
-        <StatCard label="Success Rate" value={stats.passRate} icon="📊" iconType="warning" change={{ value: 'Stable performance', isPositive: true }} />
+        <StatCard label="Total Tests" value={stats.total} icon="📝" iconType="info" />
+        <StatCard label="Tests Passed" value={stats.passed} icon="✓" iconType="success" />
+        <StatCard label="Tests Failed" value={stats.failed} icon="✗" iconType="error" />
+        <StatCard label="Success Rate" value={stats.passRate} icon="📊" iconType="warning" />
       </div>
       <div className={styles.pageHeader} style={{ marginTop: '2rem' }}><h2 className={styles.pageTitle} style={{ fontSize: '1.5rem' }}>Test Suites</h2><p className={styles.pageSubtitle}>Click on a suite to view details</p></div>
       {testSuites.length === 0 ? (

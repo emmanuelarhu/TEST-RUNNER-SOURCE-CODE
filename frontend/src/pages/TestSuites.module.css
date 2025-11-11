@@ -32,7 +32,9 @@
 .emptyState { text-align: center; padding: 4rem 2rem; background: white; border-radius: 16px; border: 1px solid var(--gray-200); }
 .emptyIllustration { font-size: 5rem; margin-bottom: 1.5rem; opacity: 0.4; }
 .emptyTitle { font-size: 1.5rem; font-weight: 700; color: var(--gray-900); margin-bottom: 0.5rem; }
-.emptyDescription { font-size: 1rem; color: var(--gray-600); }
+.emptyDescription { font-size: 1rem; color: var(--gray-600); margin-bottom: 2rem; }
+.createButton { padding: 0.75rem 1.5rem; border-radius: 10px; font-size: 0.875rem; font-weight: 600; background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-600) 100%); color: white; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; box-shadow: 0 4px 6px -1px rgba(14, 165, 233, 0.3); transition: all 0.2s; }
+.createButton:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(14, 165, 233, 0.3); }
 .errorContainer { text-align: center; padding: 4rem 2rem; background: white; border-radius: 16px; border: 1px solid var(--error-200); }
 .errorIcon { font-size: 4rem; margin-bottom: 1rem; }
 .errorTitle { font-size: 1.5rem; font-weight: 700; color: var(--error-900); margin-bottom: 0.5rem; }
