@@ -41,6 +41,12 @@ const Sidebar = () => {
             <span className={styles.navIcon}>📈</span>Test Results
           </NavLink>
         </div>
+        <div className={styles.navSection}>
+          <div className={styles.navSectionTitle}>Settings</div>
+          <NavLink to="/settings" className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
+            <span className={styles.navIcon}>⚙️</span>Settings
+          </NavLink>
+        </div>
       </nav>
       <div className={styles.sidebarFooter}>
         <div className={styles.userProfile}>

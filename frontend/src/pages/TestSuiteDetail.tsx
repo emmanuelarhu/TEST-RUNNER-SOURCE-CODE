@@ -4,6 +4,7 @@ import api from '../services/api.service';
 import Button from '../components/common/Button';
 import Loading from '../components/common/Loading';
 import CreateTestCaseModal from '../components/common/CreateTestCaseModal';
+import ViewTestCaseModal from '../components/common/ViewTestCaseModal';
 import type { TestSuite, TestCase } from '../types';
 import styles from './TestSuiteDetail.module.css';
 
@@ -230,6 +231,16 @@ const TestSuiteDetail = () => {
         onClose={() => setIsCreateModalOpen(false)}
         suiteId={id!}
         onCaseCreated={fetchData}
+      />
+
+      <ViewTestCaseModal
+        isOpen={!!selectedCase}
+        onClose={() => setSelectedCase(null)}
+        testCase={selectedCase}
+        onDelete={selectedCase ? () => {
+          handleDeleteCase(selectedCase.id);
+          setSelectedCase(null);
+        } : undefined}
       />
     </div>
   );
