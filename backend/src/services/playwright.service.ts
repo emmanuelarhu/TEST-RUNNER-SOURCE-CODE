@@ -151,6 +151,24 @@ class PlaywrightService {
         if (stderr) {
           logger.debug(`npm install stderr: ${stderr}`);
         }
+
+        // Install Playwright browsers if playwright is in dependencies
+        logger.info('Installing Playwright browsers...');
+        try {
+          const installBrowsersResult = await execAsync('npx playwright install', {
+            cwd: projectPath,
+            timeout: 300000
+          });
+
+          logger.info('Playwright browsers installed successfully');
+          if (installBrowsersResult.stderr) {
+            logger.debug(`Playwright install stderr: ${installBrowsersResult.stderr}`);
+          }
+        } catch (browserInstallError: any) {
+          // If playwright install fails, it might not be a playwright project
+          // Log warning but don't fail the entire clone operation
+          logger.warn(`Playwright browser installation failed or not needed: ${browserInstallError.message}`);
+        }
       } catch (error) {
         logger.warn('No package.json found or error installing dependencies');
       }
@@ -188,6 +206,20 @@ class PlaywrightService {
         await fs.access(projectPath);
       } catch {
         throw new Error(`Project directory not found. Please clone the repository first using the clone endpoint.`);
+      }
+
+      // Ensure Playwright browsers are installed before running tests
+      logger.info('Checking Playwright browser installation...');
+      try {
+        // Run playwright install as a safety check - it's fast if browsers are already installed
+        await execAsync('npx playwright install', {
+          cwd: projectPath,
+          timeout: 300000
+        });
+        logger.info('Playwright browsers verified/installed');
+      } catch (browserError: any) {
+        logger.warn(`Browser installation check failed: ${browserError.message}`);
+        // Continue anyway - the test command will fail with a clear message if browsers are missing
       }
 
       // Create test run record
