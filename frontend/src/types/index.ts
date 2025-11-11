@@ -4,9 +4,18 @@ export interface Project {
   name: string;
   description?: string;
   base_url?: string;
+  logo?: string; // Base64 image or URL
   created_by?: string;
   created_at: string;
   updated_at: string;
+  // Stats from last run
+  last_run?: {
+    total_tests: number;
+    passed_tests: number;
+    failed_tests: number;
+    run_date: string;
+    status: 'completed' | 'failed' | 'in_progress';
+  };
 }
 
 export interface TestSuite {
@@ -82,6 +91,7 @@ export interface CreateProjectDTO {
   name: string;
   description?: string;
   base_url?: string;
+  logo?: string;
 }
 
 export interface CreateTestSuiteDTO {
