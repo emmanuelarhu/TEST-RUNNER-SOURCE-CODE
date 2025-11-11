@@ -60,33 +60,62 @@ class PlaywrightService {
     const projectPath = path.join(this.projectsDir, projectName);
 
     try {
+      // Validate repo URL
+      if (!repoUrl || !repoUrl.trim()) {
+        throw new Error('Repository URL is required');
+      }
+
       // Check if project already exists
       try {
         await fs.access(projectPath);
         logger.info(`Project ${projectName} already exists, pulling latest changes...`);
 
-        // Pull latest changes
-        const { stdout, stderr } = await execAsync(
-          `cd "${projectPath}" && git pull origin ${branch}`,
-          { timeout: 60000 }
-        );
+        try {
+          // Pull latest changes
+          const { stdout, stderr } = await execAsync(
+            `cd "${projectPath}" && git pull origin ${branch}`,
+            { timeout: 60000 }
+          );
 
-        logger.info(`Git pull output: ${stdout}`);
-        if (stderr && !stderr.includes('Already up to date')) {
-          logger.warn(`Git pull stderr: ${stderr}`);
+          logger.info(`Git pull output: ${stdout}`);
+          if (stderr && !stderr.includes('Already up to date')) {
+            logger.warn(`Git pull stderr: ${stderr}`);
+          }
+        } catch (pullError: any) {
+          logger.error(`Git pull failed: ${pullError.message}`);
+          // If pull fails, try to use existing repo without updating
+          logger.warn('Using existing repository without updating');
         }
       } catch {
         // Directory doesn't exist, clone the repo
-        logger.info(`Cloning repository: ${repoUrl}`);
+        logger.info(`Cloning repository: ${repoUrl} (branch: ${branch})`);
 
-        const { stdout, stderr } = await execAsync(
-          `git clone ${repoUrl} "${projectPath}" --branch ${branch} --single-branch`,
-          { timeout: 120000 }
-        );
+        try {
+          const { stdout, stderr } = await execAsync(
+            `git clone "${repoUrl}" "${projectPath}" --branch ${branch} --single-branch`,
+            { timeout: 120000 }
+          );
 
-        logger.info(`Git clone output: ${stdout}`);
-        if (stderr) {
-          logger.warn(`Git clone stderr: ${stderr}`);
+          logger.info(`Git clone output: ${stdout}`);
+          if (stderr) {
+            logger.info(`Git clone stderr: ${stderr}`);
+          }
+        } catch (cloneError: any) {
+          const errorMsg = cloneError.message || cloneError.stderr || cloneError.toString();
+          logger.error(`Git clone failed: ${errorMsg}`);
+
+          // Provide more specific error messages
+          if (errorMsg.includes('Authentication failed') || errorMsg.includes('authentication')) {
+            throw new Error('Authentication failed. Please ensure your Personal Access Token (PAT) is included in the repository URL or check your credentials.');
+          } else if (errorMsg.includes('not found') || errorMsg.includes('does not exist')) {
+            throw new Error(`Branch '${branch}' not found. Please verify the branch name exists in the repository.`);
+          } else if (errorMsg.includes('Repository not found') || errorMsg.includes('could not read')) {
+            throw new Error('Repository not found. Please check the repository URL and ensure you have access permissions.');
+          } else if (errorMsg.includes('timeout') || errorMsg.includes('timed out')) {
+            throw new Error('Repository cloning timed out. The repository might be too large or network connection is slow.');
+          } else {
+            throw new Error(`Failed to clone repository: ${errorMsg}`);
+          }
         }
       }
 
@@ -111,8 +140,9 @@ class PlaywrightService {
 
       return projectPath;
     } catch (error: any) {
-      logger.error('Error cloning repository:', error);
-      throw new Error(`Failed to clone repository: ${error.message}`);
+      logger.error('Error in cloneRepository:', error);
+      // Re-throw the error with the specific message
+      throw error;
     }
   }
 

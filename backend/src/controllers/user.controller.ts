@@ -253,7 +253,74 @@ export class UserController {
   }
 
   /**
-   * Update user
+   * Update current user's own profile (non-admin)
+   */
+  async updateCurrentUserProfile(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = (req as any).user?.userId;
+      const { username, email, full_name } = req.body;
+
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          message: 'Unauthorized'
+        });
+        return;
+      }
+
+      // Check if username or email already exists for another user
+      if (username || email) {
+        const existingUser = await pool.query(
+          'SELECT id FROM users WHERE (username = $1 OR email = $2) AND id != $3',
+          [username || '', email || '', userId]
+        );
+
+        if (existingUser.rows.length > 0) {
+          res.status(409).json({
+            success: false,
+            message: 'Username or email already exists'
+          });
+          return;
+        }
+      }
+
+      const result = await pool.query(
+        `UPDATE users
+         SET username = COALESCE($1, username),
+             email = COALESCE($2, email),
+             full_name = COALESCE($3, full_name)
+         WHERE id = $4
+         RETURNING id, username, email, full_name, role, is_active, created_at, updated_at`,
+        [username, email, full_name, userId]
+      );
+
+      if (result.rows.length === 0) {
+        res.status(404).json({
+          success: false,
+          message: 'User not found'
+        });
+        return;
+      }
+
+      logger.info(`User profile updated: ${userId}`);
+
+      res.json({
+        success: true,
+        message: 'Profile updated successfully',
+        data: result.rows[0]
+      });
+    } catch (error: any) {
+      logger.error('Error updating user profile:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update profile',
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * Update user (Admin only)
    */
   async updateUser(req: Request, res: Response): Promise<void> {
     try {

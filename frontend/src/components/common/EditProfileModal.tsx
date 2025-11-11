@@ -46,7 +46,7 @@ const EditProfileModal = ({ isOpen, onClose, user, onProfileUpdated }: EditProfi
     setError(null);
 
     try {
-      const response = await api.users.update(user.id, {
+      const response = await api.users.updateMe({
         username: formData.username,
         email: formData.email,
         full_name: formData.full_name || undefined,

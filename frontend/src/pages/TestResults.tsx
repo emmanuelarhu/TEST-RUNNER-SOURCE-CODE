@@ -32,7 +32,7 @@ const TestResults = () => {
       setLoading(true);
       setError(null);
       const runsResponse = await api.executions.getProjectTestRuns(currentProject.id, 20);
-      setTestRuns(runsResponse.data);
+      setTestRuns(runsResponse.data.data);
     } catch (err: any) {
       console.error('Error fetching test runs:', err);
       setError(err.response?.data?.message || 'Failed to load test results');
