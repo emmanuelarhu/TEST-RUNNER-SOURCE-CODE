@@ -27,7 +27,7 @@ const DiagnosticTest = () => {
       const projectsResponse = await api.projects.getAll();
       diagnosticResults.projectsAPI = {
         status: 'SUCCESS',
-        count: projectsResponse.data.length,
+        count: projectsResponse.data.data.length,
         projects: projectsResponse.data
       };
     } catch (error: any) {
