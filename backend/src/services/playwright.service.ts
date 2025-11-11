@@ -311,19 +311,26 @@ class PlaywrightService {
           `cd "${projectPath}" && ${fullCommand}`,
           {
             timeout: 600000, // 10 minute timeout
-            maxBuffer: 10 * 1024 * 1024 // 10MB buffer for large outputs
+            maxBuffer: 50 * 1024 * 1024, // 50MB buffer for large outputs
+            // Don't fail on non-zero exit code - we'll check results ourselves
+            encoding: 'utf8'
           }
         );
 
         const duration = Date.now() - startTime;
 
         // Parse test results from output
-        const results = this.parsePlaywrightOutput(stdout + stderr);
+        const combinedOutput = stdout + '\n' + stderr;
+        const results = this.parsePlaywrightOutput(combinedOutput);
 
         logger.info(`Test execution completed (${results.failed > 0 ? 'with failures' : 'successfully'})`);
-        logger.info(`stdout: ${stdout.substring(0, 500)}...`); // Log first 500 chars
-        if (stderr) {
-          logger.warn(`stderr: ${stderr.substring(0, 500)}...`);
+        logger.info(`Parsed results: ${results.total} total, ${results.passed} passed, ${results.failed} failed, ${results.skipped} skipped`);
+
+        // Log more output for debugging if no results found
+        if (results.total === 0) {
+          logger.warn(`Full output length: stdout=${stdout.length}, stderr=${stderr.length}`);
+          logger.warn(`Last 1000 chars of stdout: ${stdout.substring(Math.max(0, stdout.length - 1000))}`);
+          logger.warn(`Last 1000 chars of stderr: ${stderr.substring(Math.max(0, stderr.length - 1000))}`);
         }
 
         // Check if HTML report was generated
@@ -379,12 +386,47 @@ class PlaywrightService {
       } catch (error: any) {
         const duration = Date.now() - startTime;
 
-        logger.error('Error running Playwright tests:', error);
-        logger.error('Error stdout:', error.stdout);
-        logger.error('Error stderr:', error.stderr);
+        logger.error('Error running Playwright tests:', error.message);
 
-        // Parse results even from failed execution to capture partial results
-        const results = this.parsePlaywrightOutput(error.stdout || error.stderr || '');
+        // Even if there's an error, try to parse the output
+        // Tests might have run but Playwright exited with error
+        const combinedOutput = (error.stdout || '') + '\n' + (error.stderr || '');
+        const results = this.parsePlaywrightOutput(combinedOutput);
+
+        // Log output for debugging
+        if (error.stdout) {
+          logger.info(`Test output captured (${error.stdout.length} chars)`);
+          // Log last part of output which usually has the summary
+          const lastPart = error.stdout.substring(Math.max(0, error.stdout.length - 2000));
+          logger.info(`Last 2000 chars of output:\n${lastPart}`);
+        }
+
+        // Check if HTML report was generated despite the error
+        const reportIndexPath = path.join(reportPath, 'index.html');
+        let reportGenerated = false;
+        try {
+          await fs.access(reportIndexPath);
+          reportGenerated = true;
+          logger.info(`HTML report generated at: ${reportIndexPath}`);
+        } catch {
+          logger.warn(`HTML report not found at: ${reportIndexPath}`);
+        }
+
+        // If we got test results, it's not a complete failure
+        const status = results.total > 0 ? (results.failed > 0 ? 'failed' : 'completed') : 'failed';
+
+        testResult = {
+          projectId,
+          suiteId,
+          runName: runResult.rows[0].run_name,
+          status,
+          totalTests: results.total,
+          passedTests: results.passed,
+          failedTests: results.failed,
+          skippedTests: results.skipped,
+          duration,
+          reportPath: reportGenerated ? `/reports/${reportName}/index.html` : undefined
+        };
 
         // Update test run as failed
         await pool.query(
@@ -397,12 +439,19 @@ class PlaywrightService {
                end_time = $6,
                duration_ms = $7
            WHERE id = $8`,
-          ['failed', results.total, results.passed, results.failed, results.skipped, new Date(), duration, testRunId]
+          [status, results.total, results.passed, results.failed, results.skipped, new Date(), duration, testRunId]
         );
 
-        logger.info(`❌ Test run ${testRunId} saved to database with FAILED status and results: ${results.total} total, ${results.passed} passed, ${results.failed} failed, ${results.skipped} skipped`);
+        logger.info(`Test run ${testRunId} saved: ${results.total} total, ${results.passed} passed, ${results.failed} failed, ${results.skipped} skipped (status: ${status})`);
 
-        throw new Error(`Test execution failed: ${error.message}. ${error.stderr || ''}`);
+        // If we captured test results, return them instead of throwing
+        if (results.total > 0) {
+          logger.info(`Tests completed but Playwright exited with error. Returning captured results.`);
+          return testResult;
+        }
+
+        // Only throw if we truly have no results
+        throw new Error(`Test execution failed: ${error.message}`);
       }
     } catch (error: any) {
       logger.error('Error in runTests:', error);
@@ -425,28 +474,41 @@ class PlaywrightService {
     try {
       logger.debug('Parsing Playwright output for test results...');
 
-      // Method 1: Look for summary line like: "3 passed (5s)"
+      // Method 1: Count individual test results from list reporter
+      // Look for "✓" (passed), "✘" (failed), "⊘" (skipped) markers
+      const passedTests = (output.match(/✓/g) || []).length;
+      const failedTests = (output.match(/✘/g) || []).length;
+      const skippedTests = (output.match(/⊘/g) || []).length;
+
+      if (passedTests > 0 || failedTests > 0 || skippedTests > 0) {
+        results.passed = passedTests;
+        results.failed = failedTests;
+        results.skipped = skippedTests;
+        logger.debug(`Found from markers: ${passedTests} passed, ${failedTests} failed, ${skippedTests} skipped`);
+      }
+
+      // Method 2: Look for summary line like: "3 passed (5s)"
       const passedMatch = output.match(/(\d+)\s+passed/i);
-      if (passedMatch) {
+      if (passedMatch && results.passed === 0) {
         results.passed = parseInt(passedMatch[1]);
-        logger.debug(`Found passed tests: ${results.passed}`);
+        logger.debug(`Found passed tests from summary: ${results.passed}`);
       }
 
-      // Method 2: Look for failed tests: "2 failed"
+      // Method 3: Look for failed tests: "2 failed"
       const failedMatch = output.match(/(\d+)\s+failed/i);
-      if (failedMatch) {
+      if (failedMatch && results.failed === 0) {
         results.failed = parseInt(failedMatch[1]);
-        logger.debug(`Found failed tests: ${results.failed}`);
+        logger.debug(`Found failed tests from summary: ${results.failed}`);
       }
 
-      // Method 3: Look for skipped tests: "1 skipped"
+      // Method 4: Look for skipped tests: "1 skipped"
       const skippedMatch = output.match(/(\d+)\s+skipped/i);
-      if (skippedMatch) {
+      if (skippedMatch && results.skipped === 0) {
         results.skipped = parseInt(skippedMatch[1]);
-        logger.debug(`Found skipped tests: ${results.skipped}`);
+        logger.debug(`Found skipped tests from summary: ${results.skipped}`);
       }
 
-      // Method 4: Look for flaky tests: "1 flaky"
+      // Method 5: Look for flaky tests: "1 flaky"
       const flakyMatch = output.match(/(\d+)\s+flaky/i);
       if (flakyMatch) {
         const flaky = parseInt(flakyMatch[1]);
@@ -455,16 +517,22 @@ class PlaywrightService {
         logger.debug(`Found flaky tests (counted as passed): ${flaky}`);
       }
 
-      // Method 5: Alternative format - "Running X tests using Y workers"
+      // Method 6: Alternative format - "Running X tests using Y workers"
       const runningMatch = output.match(/Running\s+(\d+)\s+tests?\s+using/i);
-      if (runningMatch && results.total === 0) {
+      if (runningMatch) {
         const totalFromRunning = parseInt(runningMatch[1]);
         logger.debug(`Found total tests from 'Running' line: ${totalFromRunning}`);
+        // Use this as a sanity check
+        const calculatedTotal = results.passed + results.failed + results.skipped;
+        if (calculatedTotal === 0) {
+          // If we haven't found individual results, at least we know the total
+          logger.debug(`Using total from 'Running' line as reference`);
+        }
       }
 
-      // Method 6: Look for "X of Y tests passed"
+      // Method 7: Look for "X of Y tests passed"
       const ofTotalMatch = output.match(/(\d+)\s+of\s+(\d+)\s+tests?\s+passed/i);
-      if (ofTotalMatch) {
+      if (ofTotalMatch && results.total === 0) {
         results.passed = parseInt(ofTotalMatch[1]);
         const totalTests = parseInt(ofTotalMatch[2]);
         results.failed = totalTests - results.passed;
@@ -476,10 +544,21 @@ class PlaywrightService {
 
       logger.info(`Parsed test results: ${results.total} total (${results.passed} passed, ${results.failed} failed, ${results.skipped} skipped)`);
 
-      // If no results were parsed, log a warning with sample output
+      // If no results were parsed, try to extract from the running line
       if (results.total === 0) {
-        logger.warn('No test results found in output. Sample output:');
-        logger.warn(output.substring(0, 500));
+        const runningMatch2 = output.match(/Running\s+(\d+)\s+tests?\s+using/i);
+        if (runningMatch2) {
+          const total = parseInt(runningMatch2[1]);
+          logger.warn(`No detailed results found, but detected ${total} tests were scheduled to run`);
+          logger.warn('Sample output (first 500 chars):');
+          logger.warn(output.substring(0, 500));
+          logger.warn('Sample output (last 500 chars):');
+          logger.warn(output.substring(Math.max(0, output.length - 500)));
+        } else {
+          logger.warn('No test results found in output at all.');
+          logger.warn('Sample output (first 500 chars):');
+          logger.warn(output.substring(0, 500));
+        }
       }
 
     } catch (error) {
