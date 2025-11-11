@@ -181,17 +181,14 @@ class PlaywrightService {
       }
 
       const project = projectResult.rows[0];
-      const dirName = this.sanitizeProjectName(project.name);
-      const projectPath = path.join(this.projectsDir, dirName);
+      const projectPath = path.join(this.projectsDir, project.name);
 
-      // Check if project directory exists
+      // Verify project directory exists
       try {
         await fs.access(projectPath);
-      } catch (error) {
-        throw new Error(`Project directory not found: ${projectPath}. Please clone the repository first.`);
+      } catch {
+        throw new Error(`Project directory not found. Please clone the repository first using the clone endpoint.`);
       }
-
-      logger.info(`Running tests for project: ${project.name} (directory: ${dirName})`);
 
       // Create test run record
       const runResult = await pool.query(
@@ -213,63 +210,58 @@ class PlaywrightService {
       const reportName = `report-${testRunId}`;
       const reportPath = path.join(this.reportsDir, reportName);
 
-      // Ensure report directory exists before running tests
+      // Ensure report directory exists
+      await fs.mkdir(reportPath, { recursive: true });
+
+      // Build Playwright command using best practices
+      // Use environment variables for configuration
+      const envVars = [
+        `PLAYWRIGHT_HTML_REPORT="${reportPath}"`,
+        `PLAYWRIGHT_BROWSERS_PATH=0` // Use system browsers
+      ];
+
+      let playwrightCmd = `npx playwright test`;
+
+      // Browser selection - check if playwright.config exists, otherwise use --project
       try {
-        await fs.mkdir(reportPath, { recursive: true });
-        logger.info(`Created report directory: ${reportPath}`);
-      } catch (error) {
-        logger.warn(`Report directory may already exist: ${reportPath}`);
+        await fs.access(path.join(projectPath, 'playwright.config.ts'));
+        // Config exists, use --project flag
+        playwrightCmd += ` --project=${browser}`;
+      } catch {
+        try {
+          await fs.access(path.join(projectPath, 'playwright.config.js'));
+          // Config exists, use --project flag
+          playwrightCmd += ` --project=${browser}`;
+        } catch {
+          // No config found, use environment variable for browser
+          envVars.push(`BROWSER=${browser}`);
+          logger.info('No playwright.config found, using default configuration');
+        }
       }
 
-      // Build Playwright command
-      let playwrightCmd = `npx playwright test`;
-      playwrightCmd += ` --project=${browser}`;
+      // Add other flags
       playwrightCmd += ` --workers=${workers}`;
-      playwrightCmd += headed ? ` --headed` : ` --headless`;
-      playwrightCmd += ` --reporter=html`;
+      playwrightCmd += headed ? ` --headed` : '';
+      playwrightCmd += ` --reporter=html,list`;
+
+      // Complete command with environment variables
+      const fullCommand = `${envVars.join(' ')} ${playwrightCmd}`;
 
       const startTime = Date.now();
       let testResult: TestResult;
 
       try {
         logger.info(`Running Playwright tests for project ${project.name}...`);
-        logger.info(`Command: ${playwrightCmd}`);
-        logger.info(`Working directory: ${projectPath}`);
-        logger.info(`Report directory: ${reportPath}`);
+        logger.info(`Project path: ${projectPath}`);
+        logger.info(`Command: ${fullCommand}`);
 
-        let stdout = '';
-        let stderr = '';
-        let testFailed = false;
-
-        try {
-          // Use cwd option instead of cd command for cross-platform compatibility
-          // Set environment variable for HTML report output directory
-          const execOptions: any = {
-            cwd: projectPath,
+        const { stdout, stderr } = await execAsync(
+          `cd "${projectPath}" && ${fullCommand}`,
+          {
             timeout: 600000, // 10 minute timeout
-            env: {
-              ...process.env,
-              PLAYWRIGHT_HTML_REPORT: reportPath,
-              PW_TEST_HTML_REPORT_OPEN: 'never' // Don't auto-open browser
-            }
-          };
-
-          // On Windows, use cmd.exe shell for better compatibility
-          if (process.platform === 'win32') {
-            execOptions.shell = true;
+            maxBuffer: 10 * 1024 * 1024 // 10MB buffer for large outputs
           }
-
-          const result = await execAsync(playwrightCmd, execOptions);
-          stdout = result.stdout.toString();
-          stderr = result.stderr.toString();
-        } catch (execError: any) {
-          // execAsync throws error if exit code is non-zero (test failures)
-          // But we still want to capture output and generate report
-          logger.warn(`Playwright command exited with error (tests may have failed): ${execError.message}`);
-          stdout = execError.stdout || '';
-          stderr = execError.stderr || '';
-          testFailed = true;
-        }
+        );
 
         const duration = Date.now() - startTime;
 
@@ -334,18 +326,27 @@ class PlaywrightService {
         const duration = Date.now() - startTime;
 
         logger.error('Error running Playwright tests:', error);
+        logger.error('Error stdout:', error.stdout);
+        logger.error('Error stderr:', error.stderr);
+
+        // Parse results even from failed execution to capture partial results
+        const results = this.parsePlaywrightOutput(error.stdout || error.stderr || '');
 
         // Update test run as failed
         await pool.query(
           `UPDATE test_runs
            SET status = $1,
-               end_time = $2,
-               duration_ms = $3
-           WHERE id = $4`,
-          ['failed', new Date(), duration, testRunId]
+               total_tests = $2,
+               passed_tests = $3,
+               failed_tests = $4,
+               skipped_tests = $5,
+               end_time = $6,
+               duration_ms = $7
+           WHERE id = $8`,
+          ['failed', results.total, results.passed, results.failed, results.skipped, new Date(), duration, testRunId]
         );
 
-        throw new Error(`Test execution failed: ${error.message}`);
+        throw new Error(`Test execution failed: ${error.message}. ${error.stderr || ''}`);
       }
     } catch (error: any) {
       logger.error('Error in runTests:', error);
