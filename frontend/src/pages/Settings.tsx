@@ -5,7 +5,7 @@ import authService from '../services/auth.service';
 import Button from '../components/common/Button';
 import Loading from '../components/common/Loading';
 import { useProject } from '../contexts/ProjectContext';
-import type { User, Project } from '../types';
+import type { User } from '../types';
 import styles from './Settings.module.css';
 
 const Settings = () => {
