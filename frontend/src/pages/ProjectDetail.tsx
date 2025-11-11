@@ -2,29 +2,19 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api.service';
 import Loading from '../components/common/Loading';
-import type { Project, BrowserType } from '../types';
+import type { Project, TestSuite, BrowserType } from '../types';
 import styles from './ProjectDetail.module.css';
-
-interface TestFile {
-  path: string;
-  name: string;
-  describes: TestDescribe[];
-}
-
-interface TestDescribe {
-  name: string;
-  line: number;
-}
 
 const ProjectDetail = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const [project, setProject] = useState<Project | null>(null);
-  const [testFiles, setTestFiles] = useState<TestFile[]>([]);
+  const [testSuites, setTestSuites] = useState<TestSuite[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedBrowser, setSelectedBrowser] = useState<BrowserType>('chromium');
   const [runningTest, setRunningTest] = useState(false);
+  const [runningSuiteId, setRunningSuiteId] = useState<string | null>(null);
 
   useEffect(() => {
     if (projectId) {
@@ -38,11 +28,15 @@ const ProjectDetail = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await api.projects.getById(projectId);
-      setProject(response.data);
-      // TODO: Fetch test files from backend
-      // For now, using mock data
-      setTestFiles([]);
+
+      // Fetch project details and test suites in parallel
+      const [projectResponse, suitesResponse] = await Promise.all([
+        api.projects.getById(projectId),
+        api.testSuites.getByProject(projectId)
+      ]);
+
+      setProject(projectResponse.data);
+      setTestSuites(suitesResponse.data.data);
     } catch (err: any) {
       console.error('Error fetching project details:', err);
       setError(err.response?.data?.message || 'Failed to load project details');
@@ -74,31 +68,25 @@ const ProjectDetail = () => {
     }
   };
 
-  const handleRunTestFile = async (filePath: string) => {
+  const handleRunTestSuite = async (suiteId: string) => {
     if (!projectId) return;
     setRunningTest(true);
+    setRunningSuiteId(suiteId);
     try {
-      console.log(`Running test file ${filePath} with ${selectedBrowser}`);
-      alert('This feature will be available once test files are detected in your project.');
+      // Call backend API to run specific test suite
+      const response = await api.executions.executeTestSuite(suiteId, {
+        browser: selectedBrowser,
+        headless: false
+      });
+      console.log('Test suite execution started:', response.data);
+      // Refresh test suites to get updated stats
+      await fetchProjectDetails();
     } catch (err: any) {
-      console.error('Error running test file:', err);
-      alert('Failed to run test file. Please try again.');
+      console.error('Error running test suite:', err);
+      setError(err.response?.data?.message || 'Failed to run test suite');
     } finally {
       setRunningTest(false);
-    }
-  };
-
-  const handleRunDescribe = async (filePath: string, describeName: string) => {
-    if (!projectId) return;
-    setRunningTest(true);
-    try {
-      console.log(`Running describe "${describeName}" in ${filePath} with ${selectedBrowser}`);
-      alert('This feature will be available once test files are detected in your project.');
-    } catch (err: any) {
-      console.error('Error running describe block:', err);
-      alert('Failed to run describe block. Please try again.');
-    } finally {
-      setRunningTest(false);
+      setRunningSuiteId(null);
     }
   };
 
@@ -197,49 +185,82 @@ const ProjectDetail = () => {
         </div>
       )}
 
-      <div className={styles.testFilesSection}>
-        <h2 className={styles.sectionTitle}>Test Files</h2>
-        {testFiles.length === 0 ? (
+      <div className={styles.testSuitesSection}>
+        <div className={styles.sectionHeader}>
+          <h2 className={styles.sectionTitle}>Test Suites</h2>
+          <button
+            className={styles.createSuiteButton}
+            onClick={() => navigate(`/suites?projectId=${projectId}`)}
+          >
+            + Create Test Suite
+          </button>
+        </div>
+
+        {testSuites.length === 0 ? (
           <div className={styles.emptyState}>
-            <div className={styles.emptyIcon}>📁</div>
-            <div className={styles.emptyText}>No test files found</div>
+            <div className={styles.emptyIcon}>📦</div>
+            <div className={styles.emptyText}>No test suites found</div>
             <div className={styles.emptySubtext}>
-              Clone your repository and add test files to get started
+              Create your first test suite to organize your Playwright tests
             </div>
           </div>
         ) : (
-          <div className={styles.filesList}>
-            {testFiles.map((file) => (
-              <div key={file.path} className={styles.fileCard}>
-                <div className={styles.fileHeader}>
-                  <div className={styles.fileName}>
-                    <span className={styles.fileIcon}>📄</span>
-                    {file.name}
+          <div className={styles.suitesGrid}>
+            {testSuites.map((suite) => (
+              <div key={suite.id} className={styles.suiteCard}>
+                <div className={styles.suiteHeader}>
+                  <div className={styles.suiteIcon}>📦</div>
+                  <div className={styles.suiteInfo}>
+                    <h3 className={styles.suiteName}>{suite.name}</h3>
+                    {suite.description && (
+                      <p className={styles.suiteDescription}>{suite.description}</p>
+                    )}
                   </div>
-                  <button
-                    onClick={() => handleRunTestFile(file.path)}
-                    disabled={runningTest}
-                    className={styles.runFileButton}
-                  >
-                    ▶ Run File
-                  </button>
                 </div>
-                {file.describes.length > 0 && (
-                  <div className={styles.describesList}>
-                    {file.describes.map((describe) => (
-                      <div key={`${file.path}-${describe.line}`} className={styles.describeItem}>
-                        <span className={styles.describeName}>{describe.name}</span>
-                        <button
-                          onClick={() => handleRunDescribe(file.path, describe.name)}
-                          disabled={runningTest}
-                          className={styles.runDescribeButton}
-                        >
-                          ▶ Run
-                        </button>
-                      </div>
-                    ))}
+
+                {/* Test counts */}
+                <div className={styles.suiteStats}>
+                  <div className={styles.statBox}>
+                    <span className={styles.statValue}>{suite.totalTests || 0}</span>
+                    <span className={styles.statLabel}>Total</span>
+                  </div>
+                  <div className={styles.statBox} style={{ color: 'var(--success-600)' }}>
+                    <span className={styles.statValue}>{suite.passed || 0}</span>
+                    <span className={styles.statLabel}>Passed</span>
+                  </div>
+                  <div className={styles.statBox} style={{ color: 'var(--error-600)' }}>
+                    <span className={styles.statValue}>{suite.failed || 0}</span>
+                    <span className={styles.statLabel}>Failed</span>
+                  </div>
+                  <div className={styles.statBox} style={{ color: 'var(--gray-500)' }}>
+                    <span className={styles.statValue}>{suite.skipped || 0}</span>
+                    <span className={styles.statLabel}>Skipped</span>
+                  </div>
+                </div>
+
+                {/* Last run info */}
+                {suite.lastRun && (
+                  <div className={styles.lastRun}>
+                    Last run: {new Date(suite.lastRun).toLocaleString()}
                   </div>
                 )}
+
+                {/* Actions */}
+                <div className={styles.suiteActions}>
+                  <button
+                    onClick={() => navigate(`/suites/${suite.id}`)}
+                    className={styles.viewButton}
+                  >
+                    View Details
+                  </button>
+                  <button
+                    onClick={() => handleRunTestSuite(suite.id)}
+                    disabled={runningTest}
+                    className={`${styles.runButton} ${runningSuiteId === suite.id ? styles.running : ''}`}
+                  >
+                    {runningSuiteId === suite.id ? '⏳ Running...' : '▶ Run Suite'}
+                  </button>
+                </div>
               </div>
             ))}
           </div>
