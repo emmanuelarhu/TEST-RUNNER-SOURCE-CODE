@@ -58,9 +58,18 @@ export const initializeDatabase = async (): Promise<void> => {
         test_script TEXT,
         expected_result TEXT,
         tags TEXT[],
+        file_path VARCHAR(500),
+        line_number INTEGER,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+    `);
+
+    // Add file_path and line_number columns if they don't exist (for existing databases)
+    await pool.query(`
+      ALTER TABLE test_cases
+      ADD COLUMN IF NOT EXISTS file_path VARCHAR(500),
+      ADD COLUMN IF NOT EXISTS line_number INTEGER;
     `);
 
     // Test executions table
