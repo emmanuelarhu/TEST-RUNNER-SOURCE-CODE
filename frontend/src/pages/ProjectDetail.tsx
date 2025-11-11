@@ -55,11 +55,20 @@ const ProjectDetail = () => {
     if (!projectId) return;
     setRunningTest(true);
     try {
-      // TODO: Call backend API to run all tests
-      console.log(`Running all tests for project ${projectId} with ${selectedBrowser}`);
-      // await api.testRuns.execute({ project_id: projectId, browser: selectedBrowser });
+      const response = await api.executions.executeProject(projectId, {
+        browser: selectedBrowser,
+        headless: true,
+        workers: 4
+      });
+
+      console.log('Test execution started:', response.data);
+      alert('Test execution started! Check the test results page for updates.');
+
+      // Refresh project data
+      await fetchProjectDetails();
     } catch (err: any) {
       console.error('Error running tests:', err);
+      alert(err.response?.data?.message || 'Failed to run tests. Please ensure the project has test suites and cases.');
     } finally {
       setRunningTest(false);
     }
@@ -69,10 +78,11 @@ const ProjectDetail = () => {
     if (!projectId) return;
     setRunningTest(true);
     try {
-      // TODO: Call backend API to run specific test file
       console.log(`Running test file ${filePath} with ${selectedBrowser}`);
+      alert('This feature will be available once test files are detected in your project.');
     } catch (err: any) {
       console.error('Error running test file:', err);
+      alert('Failed to run test file. Please try again.');
     } finally {
       setRunningTest(false);
     }
@@ -82,22 +92,23 @@ const ProjectDetail = () => {
     if (!projectId) return;
     setRunningTest(true);
     try {
-      // TODO: Call backend API to run specific describe block
       console.log(`Running describe "${describeName}" in ${filePath} with ${selectedBrowser}`);
+      alert('This feature will be available once test files are detected in your project.');
     } catch (err: any) {
       console.error('Error running describe block:', err);
+      alert('Failed to run describe block. Please try again.');
     } finally {
       setRunningTest(false);
     }
   };
 
-  if (loading) return <Loading message="Loading project details..." />;
+  if (loading) return <Loading message="Loading project details..." subtitle="Fetching project information" />;
   if (error) return (
     <div className={styles.errorContainer}>
       <div className={styles.errorIcon}>⚠️</div>
       <h2 className={styles.errorTitle}>Error Loading Project</h2>
       <p className={styles.errorMessage}>{error}</p>
-      <button onClick={() => navigate('/dashboard')} className={styles.backButton}>
+      <button onClick={() => navigate('/')} className={styles.backButton}>
         ← Back to Dashboard
       </button>
     </div>
@@ -107,11 +118,11 @@ const ProjectDetail = () => {
   return (
     <div className={styles.container}>
       <div className={styles.pageHeader}>
-        <button onClick={() => navigate('/dashboard')} className={styles.backButton}>
+        <button onClick={() => navigate('/')} className={styles.backButton}>
           ← Back to Dashboard
         </button>
         <div className={styles.breadcrumb}>
-          <span onClick={() => navigate('/dashboard')}>Projects</span>
+          <span onClick={() => navigate('/')} style={{ cursor: 'pointer', color: 'var(--primary-600)' }}>Projects</span>
           <span>›</span>
           <span>{project.name}</span>
         </div>

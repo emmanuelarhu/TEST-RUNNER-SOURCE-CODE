@@ -13,19 +13,53 @@ export class ProjectController {
         `SELECT p.*,
                 COUNT(DISTINCT ts.id) as suite_count,
                 COUNT(DISTINCT tc.id) as test_count,
-                u.username as created_by_username
+                u.username as created_by_username,
+                lr.id as last_run_id,
+                lr.total_tests as last_run_total_tests,
+                lr.passed_tests as last_run_passed_tests,
+                lr.failed_tests as last_run_failed_tests,
+                lr.start_time as last_run_date,
+                lr.status as last_run_status
          FROM projects p
          LEFT JOIN test_suites ts ON p.id = ts.project_id
          LEFT JOIN test_cases tc ON ts.id = tc.suite_id
          LEFT JOIN users u ON p.created_by = u.id
-         GROUP BY p.id, u.username
+         LEFT JOIN LATERAL (
+           SELECT id, total_tests, passed_tests, failed_tests, start_time, status
+           FROM test_runs
+           WHERE project_id = p.id
+           ORDER BY start_time DESC
+           LIMIT 1
+         ) lr ON true
+         GROUP BY p.id, u.username, lr.id, lr.total_tests, lr.passed_tests, lr.failed_tests, lr.start_time, lr.status
          ORDER BY p.created_at DESC`
       );
 
+      // Transform the data to match frontend expectations
+      const projects = result.rows.map(row => ({
+        id: row.id,
+        name: row.name,
+        description: row.description,
+        base_url: row.base_url,
+        created_by: row.created_by,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+        suite_count: row.suite_count,
+        test_count: row.test_count,
+        created_by_username: row.created_by_username,
+        last_run: row.last_run_id ? {
+          total_tests: parseInt(row.last_run_total_tests) || 0,
+          passed_tests: parseInt(row.last_run_passed_tests) || 0,
+          failed_tests: parseInt(row.last_run_failed_tests) || 0,
+          run_date: row.last_run_date,
+          status: row.last_run_status
+        } : null
+      }));
+
       res.json({
         success: true,
-        data: result.rows,
-        count: result.rows.length
+        data: projects,
+        count: projects.length
       });
     } catch (error: any) {
       logger.error('Error fetching projects:', error);
@@ -45,9 +79,22 @@ export class ProjectController {
       const { id } = req.params;
 
       const projectResult = await pool.query(
-        `SELECT p.*, u.username as created_by_username
+        `SELECT p.*, u.username as created_by_username,
+                lr.id as last_run_id,
+                lr.total_tests as last_run_total_tests,
+                lr.passed_tests as last_run_passed_tests,
+                lr.failed_tests as last_run_failed_tests,
+                lr.start_time as last_run_date,
+                lr.status as last_run_status
          FROM projects p
          LEFT JOIN users u ON p.created_by = u.id
+         LEFT JOIN LATERAL (
+           SELECT id, total_tests, passed_tests, failed_tests, start_time, status
+           FROM test_runs
+           WHERE project_id = p.id
+           ORDER BY start_time DESC
+           LIMIT 1
+         ) lr ON true
          WHERE p.id = $1`,
         [id]
       );
@@ -71,12 +118,30 @@ export class ProjectController {
         [id]
       );
 
+      const row = projectResult.rows[0];
+      const project = {
+        ...row,
+        test_suites: suitesResult.rows,
+        last_run: row.last_run_id ? {
+          total_tests: parseInt(row.last_run_total_tests) || 0,
+          passed_tests: parseInt(row.last_run_passed_tests) || 0,
+          failed_tests: parseInt(row.last_run_failed_tests) || 0,
+          run_date: row.last_run_date,
+          status: row.last_run_status
+        } : null
+      };
+
+      // Remove the individual last_run fields from the response
+      delete project.last_run_id;
+      delete project.last_run_total_tests;
+      delete project.last_run_passed_tests;
+      delete project.last_run_failed_tests;
+      delete project.last_run_date;
+      delete project.last_run_status;
+
       res.json({
         success: true,
-        data: {
-          ...projectResult.rows[0],
-          test_suites: suitesResult.rows
-        }
+        data: project
       });
     } catch (error: any) {
       logger.error('Error fetching project:', error);
