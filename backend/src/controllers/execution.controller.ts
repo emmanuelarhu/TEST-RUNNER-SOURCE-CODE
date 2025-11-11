@@ -78,18 +78,36 @@ export class TestExecutionController {
         workers
       });
 
+      // Return success even if some tests failed (as long as tests ran)
+      const message = result.status === 'completed'
+        ? 'All tests passed successfully'
+        : result.status === 'failed' && result.totalTests > 0
+        ? `Tests completed: ${result.passedTests} passed, ${result.failedTests} failed`
+        : 'Test execution completed';
+
       res.json({
         success: true,
-        message: 'Project tests execution completed',
+        message,
         data: result
       });
     } catch (error: any) {
       logger.error('Error executing project tests:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Project execution failed',
-        error: error.message
-      });
+
+      // Check if error message indicates no tests found
+      if (error.message.includes('Project(s)') && error.message.includes('not found')) {
+        res.status(400).json({
+          success: false,
+          message: 'Browser configuration error',
+          error: error.message,
+          hint: 'The requested browser is not configured in your playwright.config file. Available browsers are defined in the config.'
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          message: 'Test execution failed',
+          error: error.message
+        });
+      }
     }
   }
 
