@@ -128,13 +128,6 @@ const Settings = () => {
       </div>
 
       <div className={styles.infoCard}>
-        <div className={styles.infoLabel}>User ID</div>
-        <div className={styles.infoValue} style={{ fontFamily: 'monospace', fontSize: '0.813rem' }}>
-          {currentUserData?.id}
-        </div>
-      </div>
-
-      <div className={styles.infoCard}>
         <div className={styles.infoLabel}>Member Since</div>
         <div className={styles.infoValue}>
           {currentUserData?.created_at ? new Date(currentUserData.created_at).toLocaleDateString() : 'N/A'}

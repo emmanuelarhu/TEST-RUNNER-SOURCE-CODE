@@ -125,6 +125,34 @@ router.get('/me', authenticateToken, userController.getCurrentUser.bind(userCont
 
 /**
  * @swagger
+ * /api/v1/users/me:
+ *   put:
+ *     summary: Update current user's own profile
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               username:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               full_name:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Profile updated successfully
+ *       409:
+ *         description: Username or email already exists
+ */
+router.put('/me', authenticateToken, updateUserValidation, validateRequest, userController.updateCurrentUserProfile.bind(userController));
+
+/**
+ * @swagger
  * /api/v1/users:
  *   get:
  *     summary: Get all users (Admin only)

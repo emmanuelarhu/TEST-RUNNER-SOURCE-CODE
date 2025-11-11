@@ -35,7 +35,7 @@ const TestSuiteDetail = () => {
         api.testCases.getBySuite(id)
       ]);
       setSuite(suiteResponse.data);
-      setTestCases(casesResponse.data);
+      setTestCases(casesResponse.data.data);
     } catch (err: any) {
       console.error('Error fetching suite details:', err);
       setError(err.response?.data?.message || 'Failed to load test suite');
