@@ -50,6 +50,19 @@ class PlaywrightService {
   }
 
   /**
+   * Sanitize project name for use as directory name
+   * Replaces spaces and special characters with hyphens
+   */
+  private sanitizeProjectName(projectName: string): string {
+    return projectName
+      .trim()
+      .replace(/\s+/g, '-')           // Replace spaces with hyphens
+      .replace(/[^a-zA-Z0-9-_]/g, '') // Remove special characters
+      .replace(/-+/g, '-')            // Replace multiple hyphens with single
+      .toLowerCase();
+  }
+
+  /**
    * Clone repository from URL (supports GitHub, GitLab, Azure DevOps)
    */
   async cloneRepository(
@@ -57,7 +70,9 @@ class PlaywrightService {
     projectName: string,
     branch: string = 'main'
   ): Promise<string> {
-    const projectPath = path.join(this.projectsDir, projectName);
+    // Sanitize project name for directory
+    const dirName = this.sanitizeProjectName(projectName);
+    const projectPath = path.join(this.projectsDir, dirName);
 
     try {
       // Validate repo URL
@@ -65,17 +80,19 @@ class PlaywrightService {
         throw new Error('Repository URL is required');
       }
 
+      logger.info(`Cloning repository for project: ${projectName} (directory: ${dirName})`);
+
       // Check if project already exists
       try {
         await fs.access(projectPath);
-        logger.info(`Project ${projectName} already exists, pulling latest changes...`);
+        logger.info(`Project directory ${dirName} already exists, pulling latest changes...`);
 
         try {
           // Pull latest changes
-          const { stdout, stderr } = await execAsync(
-            `cd "${projectPath}" && git pull origin ${branch}`,
-            { timeout: 60000 }
-          );
+          const { stdout, stderr } = await execAsync(`git pull origin ${branch}`, {
+            cwd: projectPath,
+            timeout: 60000
+          });
 
           logger.info(`Git pull output: ${stdout}`);
           if (stderr && !stderr.includes('Already up to date')) {
@@ -125,10 +142,10 @@ class PlaywrightService {
         await fs.access(packageJsonPath);
         logger.info('Installing dependencies...');
 
-        const { stdout, stderr } = await execAsync(
-          `cd "${projectPath}" && npm install`,
-          { timeout: 300000 }
-        );
+        const { stdout, stderr } = await execAsync('npm install', {
+          cwd: projectPath,
+          timeout: 300000
+        });
 
         logger.info('Dependencies installed successfully');
         if (stderr) {
@@ -164,7 +181,17 @@ class PlaywrightService {
       }
 
       const project = projectResult.rows[0];
-      const projectPath = path.join(this.projectsDir, project.name);
+      const dirName = this.sanitizeProjectName(project.name);
+      const projectPath = path.join(this.projectsDir, dirName);
+
+      // Check if project directory exists
+      try {
+        await fs.access(projectPath);
+      } catch (error) {
+        throw new Error(`Project directory not found: ${projectPath}. Please clone the repository first.`);
+      }
+
+      logger.info(`Running tests for project: ${project.name} (directory: ${dirName})`);
 
       // Create test run record
       const runResult = await pool.query(
@@ -192,7 +219,6 @@ class PlaywrightService {
       playwrightCmd += ` --workers=${workers}`;
       playwrightCmd += headed ? ` --headed` : ` --headless`;
       playwrightCmd += ` --reporter=html,list`;
-      playwrightCmd += ` --output="${reportPath}"`;
 
       const startTime = Date.now();
       let testResult: TestResult;
@@ -200,11 +226,19 @@ class PlaywrightService {
       try {
         logger.info(`Running Playwright tests for project ${project.name}...`);
         logger.info(`Command: ${playwrightCmd}`);
+        logger.info(`Working directory: ${projectPath}`);
+        logger.info(`Report directory: ${reportPath}`);
 
-        const { stdout, stderr } = await execAsync(
-          `cd "${projectPath}" && ${playwrightCmd}`,
-          { timeout: 600000 } // 10 minute timeout
-        );
+        // Use cwd option instead of cd command for cross-platform compatibility
+        // Set environment variable for HTML report output directory
+        const { stdout, stderr } = await execAsync(playwrightCmd, {
+          cwd: projectPath,
+          timeout: 600000, // 10 minute timeout
+          env: {
+            ...process.env,
+            PLAYWRIGHT_HTML_REPORT: reportPath
+          }
+        });
 
         const duration = Date.now() - startTime;
 
