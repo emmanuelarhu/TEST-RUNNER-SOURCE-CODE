@@ -4,6 +4,7 @@ import api from '../services/api.service';
 import authService from '../services/auth.service';
 import Button from '../components/common/Button';
 import Loading from '../components/common/Loading';
+import EditProfileModal from '../components/common/EditProfileModal';
 import { useProject } from '../contexts/ProjectContext';
 import type { User } from '../types';
 import styles from './Settings.module.css';
@@ -16,9 +17,10 @@ const Settings = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState(false);
+  const [currentUserData, setCurrentUserData] = useState<User | null>(authService.getUser());
 
-  const currentUser = authService.getUser();
-  const isAdmin = currentUser?.role === 'admin';
+  const isAdmin = currentUserData?.role === 'admin';
 
   useEffect(() => {
     if (activeTab === 'users' && isAdmin) {
@@ -71,19 +73,31 @@ const Settings = () => {
     }
   };
 
+  const handleProfileUpdated = (updatedUser: User) => {
+    setCurrentUserData(updatedUser);
+    authService.setUser(updatedUser);
+    setSuccess('Profile updated successfully');
+    setTimeout(() => setSuccess(null), 3000);
+  };
+
   const renderProfileTab = () => (
     <div className={styles.tabContent}>
-      <h2 className={styles.sectionTitle}>Profile Information</h2>
+      <div className={styles.tabHeader}>
+        <h2 className={styles.sectionTitle}>Profile Information</h2>
+        <Button variant="primary" onClick={() => setIsEditProfileModalOpen(true)}>
+          ✏️ Edit Profile
+        </Button>
+      </div>
       <div className={styles.profileCard}>
         <div className={styles.profileAvatar}>
-          {currentUser?.full_name?.split(' ').map(n => n[0]).join('').toUpperCase() ||
-           currentUser?.username?.substring(0, 2).toUpperCase() || 'U'}
+          {currentUserData?.full_name?.split(' ').map(n => n[0]).join('').toUpperCase() ||
+           currentUserData?.username?.substring(0, 2).toUpperCase() || 'U'}
         </div>
         <div className={styles.profileInfo}>
-          <div className={styles.profileName}>{currentUser?.full_name || currentUser?.username}</div>
-          <div className={styles.profileEmail}>{currentUser?.email}</div>
+          <div className={styles.profileName}>{currentUserData?.full_name || currentUserData?.username}</div>
+          <div className={styles.profileEmail}>{currentUserData?.email}</div>
           <div className={styles.profileRole}>
-            <span className={styles.roleBadge}>{currentUser?.role?.toUpperCase()}</span>
+            <span className={styles.roleBadge}>{currentUserData?.role?.toUpperCase()}</span>
           </div>
         </div>
       </div>
@@ -91,20 +105,20 @@ const Settings = () => {
       <div className={styles.infoGrid}>
         <div className={styles.infoCard}>
           <div className={styles.infoLabel}>Username</div>
-          <div className={styles.infoValue}>{currentUser?.username}</div>
+          <div className={styles.infoValue}>{currentUserData?.username}</div>
         </div>
         <div className={styles.infoCard}>
           <div className={styles.infoLabel}>Email</div>
-          <div className={styles.infoValue}>{currentUser?.email}</div>
+          <div className={styles.infoValue}>{currentUserData?.email}</div>
         </div>
         <div className={styles.infoCard}>
           <div className={styles.infoLabel}>Role</div>
-          <div className={styles.infoValue}>{currentUser?.role}</div>
+          <div className={styles.infoValue}>{currentUserData?.role}</div>
         </div>
         <div className={styles.infoCard}>
           <div className={styles.infoLabel}>Account Status</div>
           <div className={styles.infoValue}>
-            {currentUser?.is_active ? (
+            {currentUserData?.is_active ? (
               <span className={styles.statusActive}>Active</span>
             ) : (
               <span className={styles.statusInactive}>Inactive</span>
@@ -116,14 +130,14 @@ const Settings = () => {
       <div className={styles.infoCard}>
         <div className={styles.infoLabel}>User ID</div>
         <div className={styles.infoValue} style={{ fontFamily: 'monospace', fontSize: '0.813rem' }}>
-          {currentUser?.id}
+          {currentUserData?.id}
         </div>
       </div>
 
       <div className={styles.infoCard}>
         <div className={styles.infoLabel}>Member Since</div>
         <div className={styles.infoValue}>
-          {currentUser?.created_at ? new Date(currentUser.created_at).toLocaleDateString() : 'N/A'}
+          {currentUserData?.created_at ? new Date(currentUserData.created_at).toLocaleDateString() : 'N/A'}
         </div>
       </div>
     </div>
@@ -245,7 +259,7 @@ const Settings = () => {
                     </td>
                     <td>{new Date(user.created_at).toLocaleDateString()}</td>
                     <td>
-                      {user.id !== currentUser?.id && (
+                      {user.id !== currentUserData?.id && (
                         <button
                           className={styles.tableDeleteButton}
                           onClick={() => handleDeleteUser(user.id)}
@@ -321,6 +335,15 @@ const Settings = () => {
           {activeTab === 'users' && renderUsersTab()}
         </div>
       </div>
+
+      {currentUserData && (
+        <EditProfileModal
+          isOpen={isEditProfileModalOpen}
+          onClose={() => setIsEditProfileModalOpen(false)}
+          user={currentUserData}
+          onProfileUpdated={handleProfileUpdated}
+        />
+      )}
     </div>
   );
 };
