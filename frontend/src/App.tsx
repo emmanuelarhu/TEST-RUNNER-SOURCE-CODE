@@ -9,6 +9,7 @@ import TestSuites from './pages/TestSuites';
 import TestSuiteDetail from './pages/TestSuiteDetail';
 import TestResults from './pages/TestResults';
 import Settings from './pages/Settings';
+import DiagnosticTest from './pages/DiagnosticTest';
 import './styles/index.css';
 
 function App() {
@@ -17,6 +18,7 @@ function App() {
       <Routes>
         {/* Public routes */}
         <Route path="/login" element={<Login />} />
+        <Route path="/diagnostic" element={<DiagnosticTest />} />
 
         {/* Protected routes */}
         <Route element={<ProtectedRoute />}>
