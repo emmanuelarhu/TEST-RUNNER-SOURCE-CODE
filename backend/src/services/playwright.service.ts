@@ -353,6 +353,8 @@ class PlaywrightService {
           ]
         );
 
+        logger.info(`✅ Test run ${testRunId} saved to database with results: ${testResult.totalTests} total, ${testResult.passedTests} passed, ${testResult.failedTests} failed, ${testResult.skippedTests} skipped`);
+
         return testResult;
       } catch (error: any) {
         const duration = Date.now() - startTime;
@@ -378,6 +380,8 @@ class PlaywrightService {
           ['failed', results.total, results.passed, results.failed, results.skipped, new Date(), duration, testRunId]
         );
 
+        logger.info(`❌ Test run ${testRunId} saved to database with FAILED status and results: ${results.total} total, ${results.passed} passed, ${results.failed} failed, ${results.skipped} skipped`);
+
         throw new Error(`Test execution failed: ${error.message}. ${error.stderr || ''}`);
       }
     } catch (error: any) {
@@ -388,6 +392,7 @@ class PlaywrightService {
 
   /**
    * Parse Playwright test output to extract results
+   * Supports multiple output formats from Playwright test runner
    */
   private parsePlaywrightOutput(output: string): {
     total: number;
@@ -398,25 +403,64 @@ class PlaywrightService {
     const results = { total: 0, passed: 0, failed: 0, skipped: 0 };
 
     try {
-      // Look for summary line like: "3 passed (5s)"
+      logger.debug('Parsing Playwright output for test results...');
+
+      // Method 1: Look for summary line like: "3 passed (5s)"
       const passedMatch = output.match(/(\d+)\s+passed/i);
       if (passedMatch) {
         results.passed = parseInt(passedMatch[1]);
+        logger.debug(`Found passed tests: ${results.passed}`);
       }
 
-      // Look for failed tests: "2 failed"
+      // Method 2: Look for failed tests: "2 failed"
       const failedMatch = output.match(/(\d+)\s+failed/i);
       if (failedMatch) {
         results.failed = parseInt(failedMatch[1]);
+        logger.debug(`Found failed tests: ${results.failed}`);
       }
 
-      // Look for skipped tests: "1 skipped"
+      // Method 3: Look for skipped tests: "1 skipped"
       const skippedMatch = output.match(/(\d+)\s+skipped/i);
       if (skippedMatch) {
         results.skipped = parseInt(skippedMatch[1]);
+        logger.debug(`Found skipped tests: ${results.skipped}`);
       }
 
+      // Method 4: Look for flaky tests: "1 flaky"
+      const flakyMatch = output.match(/(\d+)\s+flaky/i);
+      if (flakyMatch) {
+        const flaky = parseInt(flakyMatch[1]);
+        // Count flaky tests as passed (they eventually passed)
+        results.passed += flaky;
+        logger.debug(`Found flaky tests (counted as passed): ${flaky}`);
+      }
+
+      // Method 5: Alternative format - "Running X tests using Y workers"
+      const runningMatch = output.match(/Running\s+(\d+)\s+tests?\s+using/i);
+      if (runningMatch && results.total === 0) {
+        const totalFromRunning = parseInt(runningMatch[1]);
+        logger.debug(`Found total tests from 'Running' line: ${totalFromRunning}`);
+      }
+
+      // Method 6: Look for "X of Y tests passed"
+      const ofTotalMatch = output.match(/(\d+)\s+of\s+(\d+)\s+tests?\s+passed/i);
+      if (ofTotalMatch) {
+        results.passed = parseInt(ofTotalMatch[1]);
+        const totalTests = parseInt(ofTotalMatch[2]);
+        results.failed = totalTests - results.passed;
+        logger.debug(`Found "X of Y" format: ${results.passed} of ${totalTests} passed`);
+      }
+
+      // Calculate total
       results.total = results.passed + results.failed + results.skipped;
+
+      logger.info(`Parsed test results: ${results.total} total (${results.passed} passed, ${results.failed} failed, ${results.skipped} skipped)`);
+
+      // If no results were parsed, log a warning with sample output
+      if (results.total === 0) {
+        logger.warn('No test results found in output. Sample output:');
+        logger.warn(output.substring(0, 500));
+      }
 
     } catch (error) {
       logger.error('Error parsing Playwright output:', error);
@@ -436,6 +480,42 @@ class PlaywrightService {
       return `/reports/report-${testRunId}/index.html`;
     } catch {
       return null;
+    }
+  }
+
+  /**
+   * Get the latest test run for a project
+   */
+  async getLatestTestRun(projectId: string): Promise<any> {
+    try {
+      const result = await pool.query(
+        `SELECT tr.*, u.username as triggered_by_username, ts.name as suite_name
+         FROM test_runs tr
+         LEFT JOIN users u ON tr.triggered_by = u.id
+         LEFT JOIN test_suites ts ON tr.suite_id = ts.id
+         WHERE tr.project_id = $1
+         ORDER BY tr.created_at DESC
+         LIMIT 1`,
+        [projectId]
+      );
+
+      if (result.rows.length === 0) {
+        return null;
+      }
+
+      const testRun = result.rows[0];
+
+      // Get report path if available
+      const reportPath = await this.getReportPath(testRun.id);
+
+      return {
+        ...testRun,
+        reportPath,
+        reportUrl: reportPath ? `http://localhost:${process.env.PORT || 5000}${reportPath}` : null
+      };
+    } catch (error) {
+      logger.error('Error getting latest test run:', error);
+      throw error;
     }
   }
 

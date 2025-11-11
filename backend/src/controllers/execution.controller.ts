@@ -347,6 +347,56 @@ export class TestExecutionController {
       });
     }
   }
+
+  /**
+   * Get the latest test run and report for a project
+   */
+  async getLatestReport(req: Request, res: Response): Promise<void> {
+    try {
+      const { projectId } = req.params;
+
+      // Verify project exists
+      const projectResult = await pool.query(
+        'SELECT name FROM projects WHERE id = $1',
+        [projectId]
+      );
+
+      if (projectResult.rows.length === 0) {
+        res.status(404).json({
+          success: false,
+          message: 'Project not found'
+        });
+        return;
+      }
+
+      // Get latest test run with report
+      const latestRun = await playwrightService.getLatestTestRun(projectId);
+
+      if (!latestRun) {
+        res.status(404).json({
+          success: false,
+          message: 'No test runs found for this project. Please execute tests first.'
+        });
+        return;
+      }
+
+      res.json({
+        success: true,
+        message: 'Latest test run retrieved successfully',
+        data: {
+          projectName: projectResult.rows[0].name,
+          testRun: latestRun
+        }
+      });
+    } catch (error: any) {
+      logger.error('Error getting latest report:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to get latest report',
+        error: error.message
+      });
+    }
+  }
 }
 
 export default new TestExecutionController();
