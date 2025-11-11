@@ -1,8 +1,8 @@
 import apiClient from './api.config';
-import type { Project, TestSuite, TestCase, TestRun, TestExecution, CreateProjectDTO, CreateTestSuiteDTO, CreateTestCaseDTO, ExecuteTestDTO } from '../types';
+import type { ApiResponse, Project, TestSuite, TestCase, TestRun, TestExecution, CreateProjectDTO, CreateTestSuiteDTO, CreateTestCaseDTO, ExecuteTestDTO } from '../types';
 
 export const projectApi = {
-  getAll: () => apiClient.get<Project[]>('/projects'),
+  getAll: () => apiClient.get<ApiResponse<Project[]>>('/projects'),
   getById: (id: string) => apiClient.get<Project>(`/projects/${id}`),
   getStats: (id: string) => apiClient.get<any>(`/projects/${id}/stats`),
   create: (data: CreateProjectDTO) => apiClient.post<Project>('/projects', data),

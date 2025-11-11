@@ -1,3 +1,11 @@
+// API Response Wrappers
+export interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  count?: number;
+  message?: string;
+}
+
 // API Types matching backend
 export interface Project {
   id: string;

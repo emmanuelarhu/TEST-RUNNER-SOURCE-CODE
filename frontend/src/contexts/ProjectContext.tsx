@@ -37,7 +37,8 @@ export const ProjectProvider = ({ children }: ProjectProviderProps) => {
       setLoading(true);
       setError(null);
       const response = await api.projects.getAll();
-      const fetchedProjects = response.data;
+      // Backend returns ApiResponse<Project[]>: { success: true, data: [...], count: n }
+      const fetchedProjects = response.data.data;
       setProjects(fetchedProjects);
 
       // Set first project as current if none selected
