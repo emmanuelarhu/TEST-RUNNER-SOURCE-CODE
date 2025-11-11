@@ -11,7 +11,7 @@ export const projectApi = {
 };
 
 export const testSuiteApi = {
-  getByProject: (projectId: string) => apiClient.get<TestSuite[]>(`/tests/projects/${projectId}/suites`),
+  getByProject: (projectId: string) => apiClient.get<ApiResponse<TestSuite[]>>(`/tests/projects/${projectId}/suites`),
   getById: (id: string) => apiClient.get<TestSuite>(`/tests/suites/${id}`),
   create: (data: CreateTestSuiteDTO) => apiClient.post<TestSuite>('/tests/suites', data),
   update: (id: string, data: Partial<CreateTestSuiteDTO>) => apiClient.put<TestSuite>(`/tests/suites/${id}`, data),

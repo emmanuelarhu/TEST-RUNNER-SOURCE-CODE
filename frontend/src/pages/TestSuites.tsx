@@ -32,7 +32,7 @@ const TestSuites = () => {
       setLoading(true);
       setError(null);
       const suitesResponse = await api.testSuites.getByProject(currentProject.id);
-      setTestSuites(suitesResponse.data);
+      setTestSuites(suitesResponse.data.data);
     } catch (err: any) {
       console.error('Error fetching test suites:', err);
       setError(err.response?.data?.message || 'Failed to load test suites');
