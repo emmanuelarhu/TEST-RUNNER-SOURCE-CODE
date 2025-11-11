@@ -100,10 +100,17 @@ class App {
 
     // Static files (for screenshots and videos)
     this.app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
-    this.app.use('/reports', express.static(path.join(__dirname, '../public/reports')));
 
-    // Static files for Playwright HTML reports
-    this.app.use('/reports', express.static(path.join(__dirname, '../public/reports')));
+    // Static files for Playwright HTML reports with CORS headers
+    this.app.use('/reports', (req, res, next) => {
+      // Set CORS headers for report files
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+      res.setHeader('X-Frame-Options', 'SAMEORIGIN'); // Allow iframe from same origin
+      res.setHeader('Content-Security-Policy', "frame-ancestors 'self' http://localhost:* https://localhost:*");
+      next();
+    }, express.static(path.join(__dirname, '../public/reports')));
 
     // Swagger documentation
     setupSwagger(this.app);

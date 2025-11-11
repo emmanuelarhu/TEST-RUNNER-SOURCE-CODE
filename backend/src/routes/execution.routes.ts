@@ -127,6 +127,32 @@ router.get('/run/:runId/report', executionController.getTestReport.bind(executio
 
 /**
  * @swagger
+ * /api/v1/executions/run/{runId}/view-report:
+ *   get:
+ *     summary: View Playwright HTML report directly (for embedding in iframe)
+ *     description: Returns the HTML report that can be embedded in an iframe or viewed directly in the browser
+ *     tags: [Execution]
+ *     parameters:
+ *       - in: path
+ *         name: runId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Report HTML rendered
+ *         content:
+ *           text/html:
+ *             schema:
+ *               type: string
+ *       404:
+ *         description: Report not found
+ */
+router.get('/run/:runId/view-report', executionController.viewReport.bind(executionController));
+
+/**
+ * @swagger
  * /api/v1/executions/test-case/{testCaseId}/history:
  *   get:
  *     summary: Get test execution history
