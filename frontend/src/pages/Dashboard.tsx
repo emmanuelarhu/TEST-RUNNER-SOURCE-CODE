@@ -3,23 +3,28 @@ import { useNavigate } from 'react-router-dom';
 import api from '../services/api.service';
 import StatCard from '../components/common/StatCard';
 import Loading from '../components/common/Loading';
+import CreateProjectModal from '../components/common/CreateProjectModal';
 import { useProject } from '../contexts/ProjectContext';
 import type { TestSuite } from '../types';
 import styles from './Dashboard.module.css';
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { currentProject } = useProject();
+  const { currentProject, loading: projectsLoading, projects: allProjects, refreshProjects } = useProject();
   const [loading, setLoading] = useState(true);
   const [testSuites, setTestSuites] = useState<TestSuite[]>([]);
   const [stats, setStats] = useState({ total: 0, passed: 0, failed: 0, skipped: 0, passRate: '0%' });
   const [error, setError] = useState<string | null>(null);
+  const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] = useState(false);
 
   useEffect(() => {
     if (currentProject) {
       fetchDashboardData();
+    } else if (!projectsLoading && allProjects.length === 0) {
+      // No projects and not loading - show empty state
+      setLoading(false);
     }
-  }, [currentProject]);
+  }, [currentProject, projectsLoading, allProjects]);
 
   const fetchDashboardData = async () => {
     if (!currentProject) return;
@@ -49,7 +54,34 @@ const Dashboard = () => {
     } finally { setLoading(false); }
   };
 
-  if (!currentProject) return <Loading message="Loading project..." subtitle="Setting up your workspace" />;
+  // Show loading while projects are being fetched
+  if (projectsLoading) return <Loading message="Loading projects..." subtitle="Setting up your workspace" />;
+
+  // Show empty state if no projects exist
+  if (!currentProject && allProjects.length === 0) {
+    return (
+      <div className={styles.emptyState}>
+        <div className={styles.emptyIllustration}>📁</div>
+        <div className={styles.emptyTitle}>No Projects Yet</div>
+        <div className={styles.emptyDescription}>
+          Create your first project to start building test automation
+        </div>
+        <button className={styles.createButton} onClick={() => setIsCreateProjectModalOpen(true)}>
+          <span>+</span>
+          Create Your First Project
+        </button>
+        <CreateProjectModal
+          isOpen={isCreateProjectModalOpen}
+          onClose={() => setIsCreateProjectModalOpen(false)}
+          onProjectCreated={async () => {
+            await refreshProjects();
+            setIsCreateProjectModalOpen(false);
+          }}
+        />
+      </div>
+    );
+  }
+
   if (loading) return <Loading message="Loading dashboard..." subtitle="Fetching your test data" />;
   if (error) return (<div className={styles.errorContainer}><div className={styles.errorIcon}>⚠️</div><h2 className={styles.errorTitle}>Error Loading Dashboard</h2><p className={styles.errorMessage}>{error}</p><button onClick={fetchDashboardData} className={styles.retryButton}>Retry</button></div>);
 

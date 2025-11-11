@@ -61,7 +61,7 @@ const TestSuites = () => {
 
       // Show success message with report link
       const testRun = response.data;
-      const message = `Tests ${testRun.status === 'completed' ? 'completed successfully' : 'finished'}!\n\nTotal: ${testRun.totalTests}\nPassed: ${testRun.passedTests}\nFailed: ${testRun.failedTests}\n\nView results page for the HTML report.`;
+      const message = `Tests ${testRun.status === 'completed' ? 'completed successfully' : 'finished'}!\n\nTotal: ${testRun.total_tests}\nPassed: ${testRun.passed_tests}\nFailed: ${testRun.failed_tests}\n\nView results page for the HTML report.`;
 
       alert(message);
       navigate('/results');
