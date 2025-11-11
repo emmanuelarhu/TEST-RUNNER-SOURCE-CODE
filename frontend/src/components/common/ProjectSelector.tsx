@@ -35,8 +35,30 @@ const ProjectSelector = () => {
 
   const handleProjectCreated = async () => {
     await refreshProjects();
+    setIsModalOpen(false);
   };
 
+  // If no current project, show a create project button
+  if (!currentProject && projects.length === 0) {
+    return (
+      <div className={styles.projectSelector}>
+        <button
+          className={styles.createProjectButton}
+          onClick={handleCreateProject}
+        >
+          <span className={styles.plusIcon}>+</span>
+          Create Project
+        </button>
+        <CreateProjectModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onProjectCreated={handleProjectCreated}
+        />
+      </div>
+    );
+  }
+
+  // If no current project but projects exist, just show loading
   if (!currentProject) {
     return <div className={styles.loading}>Loading projects...</div>;
   }
