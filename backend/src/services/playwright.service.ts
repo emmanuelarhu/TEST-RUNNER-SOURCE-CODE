@@ -213,12 +213,20 @@ class PlaywrightService {
       const reportName = `report-${testRunId}`;
       const reportPath = path.join(this.reportsDir, reportName);
 
+      // Ensure report directory exists before running tests
+      try {
+        await fs.mkdir(reportPath, { recursive: true });
+        logger.info(`Created report directory: ${reportPath}`);
+      } catch (error) {
+        logger.warn(`Report directory may already exist: ${reportPath}`);
+      }
+
       // Build Playwright command
       let playwrightCmd = `npx playwright test`;
       playwrightCmd += ` --project=${browser}`;
       playwrightCmd += ` --workers=${workers}`;
       playwrightCmd += headed ? ` --headed` : ` --headless`;
-      playwrightCmd += ` --reporter=html,list`;
+      playwrightCmd += ` --reporter=html`;
 
       const startTime = Date.now();
       let testResult: TestResult;
@@ -229,39 +237,73 @@ class PlaywrightService {
         logger.info(`Working directory: ${projectPath}`);
         logger.info(`Report directory: ${reportPath}`);
 
-        // Use cwd option instead of cd command for cross-platform compatibility
-        // Set environment variable for HTML report output directory
-        const { stdout, stderr } = await execAsync(playwrightCmd, {
-          cwd: projectPath,
-          timeout: 600000, // 10 minute timeout
-          env: {
-            ...process.env,
-            PLAYWRIGHT_HTML_REPORT: reportPath
+        let stdout = '';
+        let stderr = '';
+        let testFailed = false;
+
+        try {
+          // Use cwd option instead of cd command for cross-platform compatibility
+          // Set environment variable for HTML report output directory
+          const execOptions: any = {
+            cwd: projectPath,
+            timeout: 600000, // 10 minute timeout
+            env: {
+              ...process.env,
+              PLAYWRIGHT_HTML_REPORT: reportPath,
+              PW_TEST_HTML_REPORT_OPEN: 'never' // Don't auto-open browser
+            }
+          };
+
+          // On Windows, use cmd.exe shell for better compatibility
+          if (process.platform === 'win32') {
+            execOptions.shell = true;
           }
-        });
+
+          const result = await execAsync(playwrightCmd, execOptions);
+          stdout = result.stdout.toString();
+          stderr = result.stderr.toString();
+        } catch (execError: any) {
+          // execAsync throws error if exit code is non-zero (test failures)
+          // But we still want to capture output and generate report
+          logger.warn(`Playwright command exited with error (tests may have failed): ${execError.message}`);
+          stdout = execError.stdout || '';
+          stderr = execError.stderr || '';
+          testFailed = true;
+        }
 
         const duration = Date.now() - startTime;
 
-        logger.info(`Test execution completed`);
-        logger.info(`stdout: ${stdout}`);
+        logger.info(`Test execution completed (${testFailed ? 'with failures' : 'successfully'})`);
+        logger.info(`stdout: ${stdout.substring(0, 500)}...`); // Log first 500 chars
         if (stderr) {
-          logger.warn(`stderr: ${stderr}`);
+          logger.warn(`stderr: ${stderr.substring(0, 500)}...`);
         }
 
         // Parse test results from output
-        const results = this.parsePlaywrightOutput(stdout);
+        const results = this.parsePlaywrightOutput(stdout + stderr);
+
+        // Check if HTML report was generated
+        const reportIndexPath = path.join(reportPath, 'index.html');
+        let reportGenerated = false;
+        try {
+          await fs.access(reportIndexPath);
+          reportGenerated = true;
+          logger.info(`HTML report generated successfully at: ${reportIndexPath}`);
+        } catch {
+          logger.warn(`HTML report not found at: ${reportIndexPath}`);
+        }
 
         testResult = {
           projectId,
           suiteId,
           runName: runResult.rows[0].run_name,
-          status: results.failed > 0 ? 'failed' : 'completed',
+          status: results.failed > 0 || testFailed ? 'failed' : 'completed',
           totalTests: results.total,
           passedTests: results.passed,
           failedTests: results.failed,
           skippedTests: results.skipped,
           duration,
-          reportPath: `/reports/${reportName}/index.html`
+          reportPath: reportGenerated ? `/reports/${reportName}/index.html` : undefined
         };
 
         // Update test run in database
