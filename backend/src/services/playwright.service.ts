@@ -155,14 +155,30 @@ class PlaywrightService {
         // Install Playwright browsers if playwright is in dependencies
         logger.info('Installing Playwright browsers...');
         try {
-          const installBrowsersResult = await execAsync('npx playwright install', {
+          // Install browsers with dependencies - chromium, firefox, webkit
+          const installBrowsersResult = await execAsync('npx playwright install chromium --with-deps', {
             cwd: projectPath,
-            timeout: 300000
+            timeout: 600000, // 10 minutes for browser download
+            env: {
+              ...process.env,
+              PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: undefined // Ensure browsers are downloaded
+            }
           });
 
           logger.info('Playwright browsers installed successfully');
           if (installBrowsersResult.stderr) {
             logger.debug(`Playwright install stderr: ${installBrowsersResult.stderr}`);
+          }
+
+          // Also install firefox and webkit if needed
+          try {
+            await execAsync('npx playwright install firefox webkit', {
+              cwd: projectPath,
+              timeout: 600000
+            });
+            logger.info('Additional browsers (firefox, webkit) installed');
+          } catch (additionalBrowserError) {
+            logger.debug('Additional browser installation skipped or failed (non-critical)');
           }
         } catch (browserInstallError: any) {
           // If playwright install fails, it might not be a playwright project
@@ -212,11 +228,15 @@ class PlaywrightService {
       logger.info('Checking Playwright browser installation...');
       try {
         // Run playwright install as a safety check - it's fast if browsers are already installed
-        await execAsync('npx playwright install', {
+        await execAsync(`npx playwright install ${browser} --with-deps`, {
           cwd: projectPath,
-          timeout: 300000
+          timeout: 300000,
+          env: {
+            ...process.env,
+            PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: undefined
+          }
         });
-        logger.info('Playwright browsers verified/installed');
+        logger.info(`Playwright browser (${browser}) verified/installed`);
       } catch (browserError: any) {
         logger.warn(`Browser installation check failed: ${browserError.message}`);
         // Continue anyway - the test command will fail with a clear message if browsers are missing
@@ -248,8 +268,8 @@ class PlaywrightService {
       // Build Playwright command using best practices
       // Use environment variables for configuration
       const envVars = [
-        `PLAYWRIGHT_HTML_REPORT="${reportPath}"`,
-        `PLAYWRIGHT_BROWSERS_PATH=0` // Use system browsers
+        `PLAYWRIGHT_HTML_REPORT="${reportPath}"`
+        // Don't set PLAYWRIGHT_BROWSERS_PATH - let it use the installed browsers location
       ];
 
       let playwrightCmd = `npx playwright test`;

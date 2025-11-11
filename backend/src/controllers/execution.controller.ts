@@ -414,6 +414,108 @@ export class TestExecutionController {
       });
     }
   }
+
+  /**
+   * View test report HTML directly (for embedding in iframe)
+   */
+  async viewReport(req: Request, res: Response): Promise<void> {
+    try {
+      const { runId } = req.params;
+
+      const reportPath = await playwrightService.getReportPath(runId);
+
+      if (!reportPath) {
+        res.status(404).send(`
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>Report Not Found</title>
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+                margin: 0;
+                background: #f5f5f5;
+              }
+              .message {
+                text-align: center;
+                padding: 40px;
+                background: white;
+                border-radius: 8px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+              }
+              .message h1 {
+                color: #e74c3c;
+                margin: 0 0 20px 0;
+              }
+              .message p {
+                color: #666;
+                margin: 0;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="message">
+              <h1>📋 Report Not Found</h1>
+              <p>The test report you're looking for doesn't exist or hasn't been generated yet.</p>
+              <p>Please run the tests first to generate a report.</p>
+            </div>
+          </body>
+          </html>
+        `);
+        return;
+      }
+
+      // Redirect to the static report file
+      res.redirect(reportPath);
+    } catch (error: any) {
+      logger.error('Error viewing test report:', error);
+      res.status(500).send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Error Loading Report</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              height: 100vh;
+              margin: 0;
+              background: #f5f5f5;
+            }
+            .message {
+              text-align: center;
+              padding: 40px;
+              background: white;
+              border-radius: 8px;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            }
+            .message h1 {
+              color: #e74c3c;
+              margin: 0 0 20px 0;
+            }
+            .message p {
+              color: #666;
+              margin: 10px 0;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="message">
+            <h1>⚠️ Error Loading Report</h1>
+            <p>There was an error loading the test report.</p>
+            <p><strong>Error:</strong> ${error.message}</p>
+          </div>
+        </body>
+        </html>
+      `);
+    }
+  }
 }
 
 export default new TestExecutionController();
