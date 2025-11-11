@@ -1,4 +1,4 @@
-import { TestCase } from '../../types';
+import type { TestCase } from '../../types';
 import styles from './Modal.module.css';
 
 interface ViewTestCaseModalProps {
