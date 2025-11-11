@@ -29,17 +29,30 @@ const ProjectDetail = () => {
       setLoading(true);
       setError(null);
 
+      console.log('[ProjectDetail] Fetching project:', projectId);
+
       // Fetch project details and test suites in parallel
       const [projectResponse, suitesResponse] = await Promise.all([
         api.projects.getById(projectId),
         api.testSuites.getByProject(projectId)
       ]);
 
-      setProject(projectResponse.data);
-      setTestSuites(suitesResponse.data.data);
+      console.log('[ProjectDetail] Project response:', projectResponse.data);
+      console.log('[ProjectDetail] Suites response:', suitesResponse.data);
+
+      // Backend returns { success, data: {...} } and axios wraps in .data
+      const projectData = projectResponse.data.data || projectResponse.data;
+      const suitesData = suitesResponse.data.data || [];
+
+      console.log('[ProjectDetail] Parsed project:', projectData);
+      console.log('[ProjectDetail] Parsed suites:', suitesData);
+
+      setProject(projectData);
+      setTestSuites(suitesData);
     } catch (err: any) {
-      console.error('Error fetching project details:', err);
-      setError(err.response?.data?.message || 'Failed to load project details');
+      console.error('[ProjectDetail] Error fetching project details:', err);
+      console.error('[ProjectDetail] Error response:', err.response?.data);
+      setError(err.response?.data?.message || 'Failed to load project details. Please check console for details.');
     } finally {
       setLoading(false);
     }
@@ -49,20 +62,28 @@ const ProjectDetail = () => {
     if (!projectId) return;
     setRunningTest(true);
     try {
+      console.log('[ProjectDetail] Running all tests with browser:', selectedBrowser);
       const response = await api.executions.executeProject(projectId, {
         browser: selectedBrowser,
         headless: true,
         workers: 4
       });
 
-      console.log('Test execution started:', response.data);
-      alert('Test execution started! Check the test results page for updates.');
+      console.log('[ProjectDetail] Test execution response:', response.data);
+
+      if (response.data.success) {
+        alert(`Test execution completed!\n\nTotal Tests: ${response.data.data.totalTests}\nPassed: ${response.data.data.passedTests}\nFailed: ${response.data.data.failedTests}\nStatus: ${response.data.data.status}`);
+      } else {
+        alert('Test execution started! Check the test results page for updates.');
+      }
 
       // Refresh project data
       await fetchProjectDetails();
     } catch (err: any) {
-      console.error('Error running tests:', err);
-      alert(err.response?.data?.message || 'Failed to run tests. Please ensure the project has test suites and cases.');
+      console.error('[ProjectDetail] Error running tests:', err);
+      console.error('[ProjectDetail] Error response:', err.response?.data);
+      const errorMsg = err.response?.data?.error || err.response?.data?.message || 'Failed to run tests. Please ensure the repository is cloned and has Playwright tests.';
+      alert(errorMsg);
     } finally {
       setRunningTest(false);
     }
@@ -73,17 +94,26 @@ const ProjectDetail = () => {
     setRunningTest(true);
     setRunningSuiteId(suiteId);
     try {
+      console.log('[ProjectDetail] Running test suite:', suiteId, 'with browser:', selectedBrowser);
       // Call backend API to run specific test suite
       const response = await api.executions.executeTestSuite(suiteId, {
         browser: selectedBrowser,
         headless: false
       });
-      console.log('Test suite execution started:', response.data);
+      console.log('[ProjectDetail] Test suite execution response:', response.data);
+
+      if (response.data.success) {
+        alert(`Test suite execution completed!\n\nTotal Tests: ${response.data.data.totalTests}\nPassed: ${response.data.data.passedTests}\nFailed: ${response.data.data.failedTests}`);
+      }
+
       // Refresh test suites to get updated stats
       await fetchProjectDetails();
     } catch (err: any) {
-      console.error('Error running test suite:', err);
-      setError(err.response?.data?.message || 'Failed to run test suite');
+      console.error('[ProjectDetail] Error running test suite:', err);
+      console.error('[ProjectDetail] Error response:', err.response?.data);
+      const errorMsg = err.response?.data?.error || err.response?.data?.message || 'Failed to run test suite. Please ensure the repository is cloned.';
+      setError(errorMsg);
+      alert(errorMsg);
     } finally {
       setRunningTest(false);
       setRunningSuiteId(null);
