@@ -265,14 +265,14 @@ class PlaywrightService {
 
         const duration = Date.now() - startTime;
 
-        logger.info(`Test execution completed (${testFailed ? 'with failures' : 'successfully'})`);
+        // Parse test results from output
+        const results = this.parsePlaywrightOutput(stdout + stderr);
+
+        logger.info(`Test execution completed (${results.failed > 0 ? 'with failures' : 'successfully'})`);
         logger.info(`stdout: ${stdout.substring(0, 500)}...`); // Log first 500 chars
         if (stderr) {
           logger.warn(`stderr: ${stderr.substring(0, 500)}...`);
         }
-
-        // Parse test results from output
-        const results = this.parsePlaywrightOutput(stdout + stderr);
 
         // Check if HTML report was generated
         const reportIndexPath = path.join(reportPath, 'index.html');
@@ -289,7 +289,7 @@ class PlaywrightService {
           projectId,
           suiteId,
           runName: runResult.rows[0].run_name,
-          status: results.failed > 0 || testFailed ? 'failed' : 'completed',
+          status: results.failed > 0 ? 'failed' : 'completed',
           totalTests: results.total,
           passedTests: results.passed,
           failedTests: results.failed,
