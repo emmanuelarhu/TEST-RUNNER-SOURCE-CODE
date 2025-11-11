@@ -53,6 +53,7 @@ tmp/
 temp/
 
 # Playwright
+/public/reports/
 /playwright-report/
 /blob-report/
 /playwright/.cache/
