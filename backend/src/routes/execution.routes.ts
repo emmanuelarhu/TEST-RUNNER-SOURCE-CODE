@@ -278,4 +278,103 @@ router.get('/project/:projectId/runs', executionController.getProjectTestRuns.bi
  */
 router.get('/project/:projectId/latest-report', executionController.getLatestReport.bind(executionController));
 
+/**
+ * @swagger
+ * /api/v1/executions/project/{projectId}/runs/detailed:
+ *   get:
+ *     summary: Get all test runs for a project with detailed information
+ *     description: Returns test runs with suite counts, case counts, and pass rates. Supports pagination.
+ *     tags: [Execution]
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *     responses:
+ *       200:
+ *         description: Detailed test runs retrieved successfully
+ */
+router.get('/project/:projectId/runs/detailed', executionController.getProjectTestRunsDetailed.bind(executionController));
+
+/**
+ * @swagger
+ * /api/v1/executions/run/{runId}/detailed:
+ *   get:
+ *     summary: Get detailed information for a specific test run
+ *     description: Returns test run details including all suites and test cases with their results
+ *     tags: [Execution]
+ *     parameters:
+ *       - in: path
+ *         name: runId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Detailed test run information
+ *       404:
+ *         description: Test run not found
+ */
+router.get('/run/:runId/detailed', executionController.getTestRunDetailed.bind(executionController));
+
+/**
+ * @swagger
+ * /api/v1/executions/run/{runId}/suites:
+ *   get:
+ *     summary: Get suite results for a test run
+ *     tags: [Execution]
+ *     parameters:
+ *       - in: path
+ *         name: runId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Suite results retrieved
+ */
+router.get('/run/:runId/suites', executionController.getTestRunSuites.bind(executionController));
+
+/**
+ * @swagger
+ * /api/v1/executions/run/{runId}/cases:
+ *   get:
+ *     summary: Get test case results for a test run
+ *     tags: [Execution]
+ *     parameters:
+ *       - in: path
+ *         name: runId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [passed, failed, skipped, flaky]
+ *       - in: query
+ *         name: suiteName
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Test case results retrieved
+ */
+router.get('/run/:runId/cases', executionController.getTestRunCases.bind(executionController));
+
 export default router;

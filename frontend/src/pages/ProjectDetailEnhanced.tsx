@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api.service';
 import Loading from '../components/common/Loading';
+import TestRunHistory from '../components/TestRunHistory';
 import type { Project, TestSuite, BrowserType } from '../types';
 import styles from './ProjectDetail.module.css';
 
@@ -369,6 +370,13 @@ const ProjectDetailEnhanced = () => {
       )}
 
       {/* Test Suites Section */}
+      {/* Test Run History Section */}
+      {project && (
+        <div style={{ marginTop: '2rem', marginBottom: '2rem' }}>
+          <TestRunHistory projectId={project.id} projectName={project.name} />
+        </div>
+      )}
+
       <div className={styles.testSuitesSection}>
         <div className={styles.sectionHeader}>
           <h2 className={styles.sectionTitle}>Test Suites ({testSuites.length})</h2>

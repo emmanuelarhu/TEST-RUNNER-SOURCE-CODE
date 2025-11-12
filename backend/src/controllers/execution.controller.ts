@@ -534,6 +534,261 @@ export class TestExecutionController {
       `);
     }
   }
+
+  /**
+   * Get all test runs for a project with pagination
+   */
+  async getProjectTestRunsDetailed(req: Request, res: Response): Promise<void> {
+    try {
+      const { projectId } = req.params;
+      const { limit = 10, offset = 0 } = req.query;
+
+      logger.info(`Getting test runs for project: ${projectId}`);
+
+      // Get project details
+      const projectResult = await pool.query(
+        'SELECT name FROM projects WHERE id = $1',
+        [projectId]
+      );
+
+      if (projectResult.rows.length === 0) {
+        res.status(404).json({
+          success: false,
+          message: 'Project not found'
+        });
+        return;
+      }
+
+      // Get total count
+      const countResult = await pool.query(
+        'SELECT COUNT(*) as total FROM test_runs WHERE project_id = $1',
+        [projectId]
+      );
+
+      // Get test runs with pagination
+      const runsResult = await pool.query(
+        `SELECT
+          tr.id,
+          tr.run_name,
+          tr.run_number,
+          tr.status,
+          tr.total_tests,
+          tr.passed_tests,
+          tr.failed_tests,
+          tr.skipped_tests,
+          tr.flaky_tests,
+          tr.duration_ms,
+          tr.browser,
+          tr.report_path,
+          tr.report_url,
+          tr.exit_code,
+          tr.start_time,
+          tr.end_time,
+          tr.created_at,
+          u.username as triggered_by_username
+         FROM test_runs tr
+         LEFT JOIN users u ON tr.triggered_by = u.id
+         WHERE tr.project_id = $1
+         ORDER BY tr.created_at DESC
+         LIMIT $2 OFFSET $3`,
+        [projectId, limit, offset]
+      );
+
+      // Get suite and case counts for each run
+      const runsWithDetails = await Promise.all(
+        runsResult.rows.map(async (run) => {
+          const suitesCount = await pool.query(
+            'SELECT COUNT(*) as count FROM test_run_suites WHERE test_run_id = $1',
+            [run.id]
+          );
+
+          const casesCount = await pool.query(
+            'SELECT COUNT(*) as count FROM test_run_cases WHERE test_run_id = $1',
+            [run.id]
+          );
+
+          return {
+            ...run,
+            suitesCount: parseInt(suitesCount.rows[0].count),
+            casesCount: parseInt(casesCount.rows[0].count),
+            passRate: run.total_tests > 0
+              ? ((run.passed_tests / run.total_tests) * 100).toFixed(2)
+              : 0
+          };
+        })
+      );
+
+      res.json({
+        success: true,
+        data: {
+          projectName: projectResult.rows[0].name,
+          testRuns: runsWithDetails,
+          pagination: {
+            total: parseInt(countResult.rows[0].total),
+            limit: parseInt(limit as string),
+            offset: parseInt(offset as string),
+            hasMore: parseInt(offset as string) + runsWithDetails.length < parseInt(countResult.rows[0].total)
+          }
+        }
+      });
+    } catch (error: any) {
+      logger.error('Error getting project test runs:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to get test runs',
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * Get detailed information for a specific test run
+   */
+  async getTestRunDetailed(req: Request, res: Response): Promise<void> {
+    try {
+      const { runId } = req.params;
+
+      logger.info(`Getting detailed info for test run: ${runId}`);
+
+      // Get test run details
+      const runResult = await pool.query(
+        `SELECT
+          tr.*,
+          p.name as project_name,
+          u.username as triggered_by_username
+         FROM test_runs tr
+         LEFT JOIN projects p ON tr.project_id = p.id
+         LEFT JOIN users u ON tr.triggered_by = u.id
+         WHERE tr.id = $1`,
+        [runId]
+      );
+
+      if (runResult.rows.length === 0) {
+        res.status(404).json({
+          success: false,
+          message: 'Test run not found'
+        });
+        return;
+      }
+
+      // Get suite results
+      const suitesResult = await pool.query(
+        `SELECT * FROM test_run_suites
+         WHERE test_run_id = $1
+         ORDER BY suite_name`,
+        [runId]
+      );
+
+      // Get test case results
+      const casesResult = await pool.query(
+        `SELECT * FROM test_run_cases
+         WHERE test_run_id = $1
+         ORDER BY suite_name, test_name`,
+        [runId]
+      );
+
+      res.json({
+        success: true,
+        data: {
+          testRun: runResult.rows[0],
+          suites: suitesResult.rows,
+          cases: casesResult.rows
+        }
+      });
+    } catch (error: any) {
+      logger.error('Error getting detailed test run:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to get test run details',
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * Get suite results for a test run
+   */
+  async getTestRunSuites(req: Request, res: Response): Promise<void> {
+    try {
+      const { runId } = req.params;
+
+      logger.info(`Getting suites for test run: ${runId}`);
+
+      const suitesResult = await pool.query(
+        `SELECT
+          trs.*,
+          tr.run_name,
+          tr.run_number
+         FROM test_run_suites trs
+         JOIN test_runs tr ON trs.test_run_id = tr.id
+         WHERE trs.test_run_id = $1
+         ORDER BY trs.suite_name`,
+        [runId]
+      );
+
+      res.json({
+        success: true,
+        data: suitesResult.rows
+      });
+    } catch (error: any) {
+      logger.error('Error getting test run suites:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to get test run suites',
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * Get test case results for a test run
+   */
+  async getTestRunCases(req: Request, res: Response): Promise<void> {
+    try {
+      const { runId } = req.params;
+      const { status, suiteName } = req.query;
+
+      logger.info(`Getting cases for test run: ${runId}`);
+
+      let query = `
+        SELECT
+          trc.*,
+          tr.run_name,
+          tr.run_number
+        FROM test_run_cases trc
+        JOIN test_runs tr ON trc.test_run_id = tr.id
+        WHERE trc.test_run_id = $1
+      `;
+
+      const params: any[] = [runId];
+
+      if (status) {
+        params.push(status);
+        query += ` AND trc.status = $${params.length}`;
+      }
+
+      if (suiteName) {
+        params.push(suiteName);
+        query += ` AND trc.suite_name = $${params.length}`;
+      }
+
+      query += ` ORDER BY trc.suite_name, trc.test_name`;
+
+      const casesResult = await pool.query(query, params);
+
+      res.json({
+        success: true,
+        data: casesResult.rows
+      });
+    } catch (error: any) {
+      logger.error('Error getting test run cases:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to get test run cases',
+        error: error.message
+      });
+    }
+  }
 }
 
 export default new TestExecutionController();

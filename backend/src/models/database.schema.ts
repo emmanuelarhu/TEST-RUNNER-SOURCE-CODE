@@ -100,17 +100,66 @@ export const initializeDatabase = async (): Promise<void> => {
         project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
         suite_id UUID REFERENCES test_suites(id) ON DELETE CASCADE,
         run_name VARCHAR(100),
+        run_number INTEGER,
         status VARCHAR(20) DEFAULT 'in_progress' CHECK (status IN ('in_progress', 'completed', 'failed', 'cancelled')),
         total_tests INTEGER DEFAULT 0,
         passed_tests INTEGER DEFAULT 0,
         failed_tests INTEGER DEFAULT 0,
         skipped_tests INTEGER DEFAULT 0,
+        flaky_tests INTEGER DEFAULT 0,
         start_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         end_time TIMESTAMP,
         duration_ms INTEGER,
         triggered_by UUID REFERENCES users(id) ON DELETE SET NULL,
         environment VARCHAR(50),
         browser VARCHAR(20),
+        report_path VARCHAR(500),
+        report_url VARCHAR(500),
+        exit_code INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Add new columns to existing test_runs table
+    await pool.query(`
+      ALTER TABLE test_runs
+      ADD COLUMN IF NOT EXISTS flaky_tests INTEGER DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS report_path VARCHAR(500),
+      ADD COLUMN IF NOT EXISTS report_url VARCHAR(500),
+      ADD COLUMN IF NOT EXISTS exit_code INTEGER,
+      ADD COLUMN IF NOT EXISTS run_number INTEGER;
+    `);
+
+    // Test run suites table (suite-level results for each run)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS test_run_suites (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        test_run_id UUID REFERENCES test_runs(id) ON DELETE CASCADE,
+        suite_name VARCHAR(200) NOT NULL,
+        file_path VARCHAR(500),
+        total_tests INTEGER DEFAULT 0,
+        passed_tests INTEGER DEFAULT 0,
+        failed_tests INTEGER DEFAULT 0,
+        skipped_tests INTEGER DEFAULT 0,
+        flaky_tests INTEGER DEFAULT 0,
+        duration_ms INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Test run cases table (individual test case results for each run)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS test_run_cases (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        test_run_id UUID REFERENCES test_runs(id) ON DELETE CASCADE,
+        suite_name VARCHAR(200),
+        test_name VARCHAR(300) NOT NULL,
+        file_path VARCHAR(500),
+        line_number INTEGER,
+        status VARCHAR(20) CHECK (status IN ('passed', 'failed', 'skipped', 'flaky')),
+        duration_ms INTEGER,
+        error_message TEXT,
+        stack_trace TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
@@ -122,6 +171,9 @@ export const initializeDatabase = async (): Promise<void> => {
       CREATE INDEX IF NOT EXISTS idx_test_executions_status ON test_executions(status);
       CREATE INDEX IF NOT EXISTS idx_test_runs_project_id ON test_runs(project_id);
       CREATE INDEX IF NOT EXISTS idx_test_suites_project_id ON test_suites(project_id);
+      CREATE INDEX IF NOT EXISTS idx_test_run_suites_test_run_id ON test_run_suites(test_run_id);
+      CREATE INDEX IF NOT EXISTS idx_test_run_cases_test_run_id ON test_run_cases(test_run_id);
+      CREATE INDEX IF NOT EXISTS idx_test_runs_created_at ON test_runs(created_at DESC);
     `);
 
     // Create trigger to update 'updated_at' timestamp

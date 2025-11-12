@@ -242,15 +242,19 @@ class PlaywrightService {
         // Continue anyway - the test command will fail with a clear message if browsers are missing
       }
 
+      // Get next run number for this project
+      const runNumber = await this.getNextRunNumber(projectId);
+
       // Create test run record
       const runResult = await pool.query(
-        `INSERT INTO test_runs (project_id, suite_id, run_name, status, start_time, browser, environment)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `INSERT INTO test_runs (project_id, suite_id, run_name, run_number, status, start_time, browser, environment)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
          RETURNING *`,
         [
           projectId,
           suiteId || null,
-          `Run ${new Date().toISOString()}`,
+          `Test Run #${runNumber}`,
+          runNumber,
           'in_progress',
           new Date(),
           browser,
@@ -333,6 +337,9 @@ class PlaywrightService {
           logger.warn(`Last 1000 chars of stderr: ${stderr.substring(Math.max(0, stderr.length - 1000))}`);
         }
 
+        // Parse detailed test results
+        const detailedResults = this.parseDetailedTestResults(combinedOutput);
+
         // Check if HTML report was generated
         const reportIndexPath = path.join(reportPath, 'index.html');
         let reportGenerated = false;
@@ -344,6 +351,9 @@ class PlaywrightService {
           logger.warn(`HTML report not found at: ${reportIndexPath}`);
         }
 
+        const reportPathValue = reportGenerated ? `/reports/${reportName}/index.html` : undefined;
+        const reportUrlValue = reportGenerated ? `http://localhost:5000/api/v1/executions/run/${testRunId}/view-report` : undefined;
+
         testResult = {
           projectId,
           suiteId,
@@ -354,10 +364,10 @@ class PlaywrightService {
           failedTests: results.failed,
           skippedTests: results.skipped,
           duration,
-          reportPath: reportGenerated ? `/reports/${reportName}/index.html` : undefined
+          reportPath: reportPathValue
         };
 
-        // Update test run in database
+        // Update test run in database with detailed information
         await pool.query(
           `UPDATE test_runs
            SET status = $1,
@@ -365,22 +375,33 @@ class PlaywrightService {
                passed_tests = $3,
                failed_tests = $4,
                skipped_tests = $5,
-               end_time = $6,
-               duration_ms = $7
-           WHERE id = $8`,
+               flaky_tests = $6,
+               end_time = $7,
+               duration_ms = $8,
+               report_path = $9,
+               report_url = $10,
+               exit_code = $11
+           WHERE id = $12`,
           [
             testResult.status,
             testResult.totalTests,
             testResult.passedTests,
             testResult.failedTests,
             testResult.skippedTests,
+            detailedResults.flakyTests,
             new Date(),
-            testResult.duration,
+            detailedResults.totalDuration || testResult.duration,
+            reportPathValue,
+            reportUrlValue,
+            0, // exit code 0 for success
             testRunId
           ]
         );
 
-        logger.info(`✅ Test run ${testRunId} saved to database with results: ${testResult.totalTests} total, ${testResult.passedTests} passed, ${testResult.failedTests} failed, ${testResult.skippedTests} skipped`);
+        // Save detailed test results (suites and cases)
+        await this.saveDetailedResults(testRunId, detailedResults);
+
+        logger.info(`✅ Test run ${testRunId} saved to database with results: ${testResult.totalTests} total, ${testResult.passedTests} passed, ${testResult.failedTests} failed, ${testResult.skippedTests} skipped, ${detailedResults.flakyTests} flaky`);
 
         return testResult;
       } catch (error: any) {
@@ -401,6 +422,9 @@ class PlaywrightService {
           logger.info(`Last 2000 chars of output:\n${lastPart}`);
         }
 
+        // Parse detailed test results
+        const detailedResults = this.parseDetailedTestResults(combinedOutput);
+
         // Check if HTML report was generated despite the error
         const reportIndexPath = path.join(reportPath, 'index.html');
         let reportGenerated = false;
@@ -411,6 +435,9 @@ class PlaywrightService {
         } catch {
           logger.warn(`HTML report not found at: ${reportIndexPath}`);
         }
+
+        const reportPathValue = reportGenerated ? `/reports/${reportName}/index.html` : undefined;
+        const reportUrlValue = reportGenerated ? `http://localhost:5000/api/v1/executions/run/${testRunId}/view-report` : undefined;
 
         // If we got test results, it's not a complete failure
         const status = results.total > 0 ? (results.failed > 0 ? 'failed' : 'completed') : 'failed';
@@ -425,10 +452,10 @@ class PlaywrightService {
           failedTests: results.failed,
           skippedTests: results.skipped,
           duration,
-          reportPath: reportGenerated ? `/reports/${reportName}/index.html` : undefined
+          reportPath: reportPathValue
         };
 
-        // Update test run as failed
+        // Update test run with detailed information
         await pool.query(
           `UPDATE test_runs
            SET status = $1,
@@ -436,13 +463,35 @@ class PlaywrightService {
                passed_tests = $3,
                failed_tests = $4,
                skipped_tests = $5,
-               end_time = $6,
-               duration_ms = $7
-           WHERE id = $8`,
-          [status, results.total, results.passed, results.failed, results.skipped, new Date(), duration, testRunId]
+               flaky_tests = $6,
+               end_time = $7,
+               duration_ms = $8,
+               report_path = $9,
+               report_url = $10,
+               exit_code = $11
+           WHERE id = $12`,
+          [
+            status,
+            results.total,
+            results.passed,
+            results.failed,
+            results.skipped,
+            detailedResults.flakyTests,
+            new Date(),
+            detailedResults.totalDuration || duration,
+            reportPathValue,
+            reportUrlValue,
+            error.code || 1, // exit code from error
+            testRunId
+          ]
         );
 
-        logger.info(`Test run ${testRunId} saved: ${results.total} total, ${results.passed} passed, ${results.failed} failed, ${results.skipped} skipped (status: ${status})`);
+        // Save detailed test results (suites and cases)
+        if (results.total > 0) {
+          await this.saveDetailedResults(testRunId, detailedResults);
+        }
+
+        logger.info(`Test run ${testRunId} saved: ${results.total} total, ${results.passed} passed, ${results.failed} failed, ${results.skipped} skipped, ${detailedResults.flakyTests} flaky (status: ${status})`);
 
         // If we captured test results, return them instead of throwing
         if (results.total > 0) {
@@ -566,6 +615,265 @@ class PlaywrightService {
     }
 
     return results;
+  }
+
+  /**
+   * Parse detailed test results including suites, cases, and files
+   */
+  private parseDetailedTestResults(output: string): {
+    suites: Map<string, any>;
+    cases: any[];
+    files: Set<string>;
+    totalDuration: number;
+    flakyTests: number;
+  } {
+    const suites = new Map<string, any>();
+    const cases: any[] = [];
+    const files = new Set<string>();
+    let totalDuration = 0;
+    let flakyTests = 0;
+
+    try {
+      // Parse total duration from "Total time:" line
+      const durationMatch = output.match(/Total time:\s*([\d.]+)([a-z]+)/i);
+      if (durationMatch) {
+        const value = parseFloat(durationMatch[1]);
+        const unit = durationMatch[2].toLowerCase();
+        // Convert to milliseconds
+        if (unit === 's' || unit === 'sec' || unit === 'seconds') {
+          totalDuration = value * 1000;
+        } else if (unit === 'm' || unit === 'min' || unit === 'minutes') {
+          totalDuration = value * 60 * 1000;
+        } else if (unit === 'ms' || unit === 'milliseconds') {
+          totalDuration = value;
+        }
+        logger.debug(`Parsed total duration: ${totalDuration}ms from "${durationMatch[0]}"`);
+      }
+
+      // Parse flaky tests count
+      const flakyMatch = output.match(/(\d+)\s+flaky/i);
+      if (flakyMatch) {
+        flakyTests = parseInt(flakyMatch[1]);
+        logger.debug(`Parsed flaky tests: ${flakyTests}`);
+      }
+
+      // Parse individual test results from list reporter output
+      // Format: "  ✓ [browser] › file.spec.ts:lineNumber:columnNumber › Suite Name › Test Name (duration)"
+      // or: "  ✘ [browser] › file.spec.ts:lineNumber:columnNumber › Suite Name › Test Name (duration)"
+      const testLineRegex = /^\s*([✓✘⊘])\s+\[([^\]]+)\]\s+›\s+([^›]+\.spec\.[jt]s)(?::(\d+):(\d+))?\s+›\s+([^›]+?)(?:\s+›\s+(.+?))?\s+\(([^)]+)\)/gm;
+
+      let match;
+      while ((match = testLineRegex.exec(output)) !== null) {
+        const [, marker, browser, filePath, lineNum, , suiteNamePart1, suiteNamePart2, durationStr] = match;
+
+        // Determine status
+        let status: string;
+        if (marker === '✓') status = 'passed';
+        else if (marker === '✘') status = 'failed';
+        else if (marker === '⊘') status = 'skipped';
+        else status = 'unknown';
+
+        // Parse duration
+        let durationMs = 0;
+        const durMatch = durationStr.match(/([\d.]+)(ms|s|m)/);
+        if (durMatch) {
+          const val = parseFloat(durMatch[1]);
+          const unit = durMatch[2];
+          if (unit === 's') durationMs = val * 1000;
+          else if (unit === 'm') durationMs = val * 60 * 1000;
+          else durationMs = val;
+        }
+
+        // Clean file path
+        const cleanFilePath = filePath.trim();
+        files.add(cleanFilePath);
+
+        // Determine suite name and test name
+        let suiteName = suiteNamePart1?.trim() || 'Default Suite';
+        let testName = suiteNamePart2?.trim() || suiteNamePart1?.trim() || 'Unnamed Test';
+
+        // If there's no second part, the first part is the test name
+        if (!suiteNamePart2) {
+          testName = suiteNamePart1?.trim() || 'Unnamed Test';
+          suiteName = 'Default Suite';
+        }
+
+        // Add to suites map
+        if (!suites.has(suiteName)) {
+          suites.set(suiteName, {
+            name: suiteName,
+            filePath: cleanFilePath,
+            totalTests: 0,
+            passedTests: 0,
+            failedTests: 0,
+            skippedTests: 0,
+            flakyTests: 0,
+            durationMs: 0
+          });
+        }
+
+        const suite = suites.get(suiteName)!;
+        suite.totalTests++;
+        suite.durationMs += durationMs;
+
+        if (status === 'passed') suite.passedTests++;
+        else if (status === 'failed') suite.failedTests++;
+        else if (status === 'skipped') suite.skippedTests++;
+
+        // Add test case
+        cases.push({
+          suiteName,
+          testName,
+          filePath: cleanFilePath,
+          lineNumber: lineNum ? parseInt(lineNum) : null,
+          status,
+          durationMs,
+          errorMessage: null
+        });
+      }
+
+      // Alternative parsing for simpler format without browser prefix
+      // Format: "  ✓ file.spec.ts › Suite Name › Test Name"
+      const simpleTestRegex = /^\s*([✓✘⊘])\s+([^›]+\.spec\.[jt]s)\s+›\s+([^›]+?)(?:\s+›\s+(.+?))?\s*$/gm;
+
+      while ((match = simpleTestRegex.exec(output)) !== null) {
+        const [, marker, filePath, suiteNamePart1, suiteNamePart2] = match;
+
+        let status: string;
+        if (marker === '✓') status = 'passed';
+        else if (marker === '✘') status = 'failed';
+        else if (marker === '⊘') status = 'skipped';
+        else status = 'unknown';
+
+        const cleanFilePath = filePath.trim();
+        files.add(cleanFilePath);
+
+        let suiteName = suiteNamePart1?.trim() || 'Default Suite';
+        let testName = suiteNamePart2?.trim() || suiteNamePart1?.trim() || 'Unnamed Test';
+
+        if (!suiteNamePart2) {
+          testName = suiteNamePart1?.trim() || 'Unnamed Test';
+          suiteName = 'Default Suite';
+        }
+
+        // Only add if we haven't already captured this from the detailed format
+        const alreadyExists = cases.some(c =>
+          c.suiteName === suiteName &&
+          c.testName === testName &&
+          c.filePath === cleanFilePath
+        );
+
+        if (!alreadyExists) {
+          if (!suites.has(suiteName)) {
+            suites.set(suiteName, {
+              name: suiteName,
+              filePath: cleanFilePath,
+              totalTests: 0,
+              passedTests: 0,
+              failedTests: 0,
+              skippedTests: 0,
+              flakyTests: 0,
+              durationMs: 0
+            });
+          }
+
+          const suite = suites.get(suiteName)!;
+          suite.totalTests++;
+
+          if (status === 'passed') suite.passedTests++;
+          else if (status === 'failed') suite.failedTests++;
+          else if (status === 'skipped') suite.skippedTests++;
+
+          cases.push({
+            suiteName,
+            testName,
+            filePath: cleanFilePath,
+            lineNumber: null,
+            status,
+            durationMs: 0,
+            errorMessage: null
+          });
+        }
+      }
+
+      logger.info(`Parsed detailed results: ${suites.size} suites, ${cases.length} test cases, ${files.size} test files`);
+
+    } catch (error) {
+      logger.error('Error parsing detailed test results:', error);
+    }
+
+    return { suites, cases, files: files, totalDuration, flakyTests };
+  }
+
+  /**
+   * Get next run number for a project
+   */
+  private async getNextRunNumber(projectId: string): Promise<number> {
+    try {
+      const result = await pool.query(
+        `SELECT COALESCE(MAX(run_number), 0) + 1 as next_run_number
+         FROM test_runs
+         WHERE project_id = $1`,
+        [projectId]
+      );
+      return result.rows[0].next_run_number;
+    } catch (error) {
+      logger.error('Error getting next run number:', error);
+      return 1;
+    }
+  }
+
+  /**
+   * Save detailed test results to database
+   */
+  private async saveDetailedResults(
+    testRunId: string,
+    detailedResults: ReturnType<typeof this.parseDetailedTestResults>
+  ): Promise<void> {
+    try {
+      // Save suite results
+      for (const [suiteName, suite] of detailedResults.suites) {
+        await pool.query(
+          `INSERT INTO test_run_suites
+           (test_run_id, suite_name, file_path, total_tests, passed_tests, failed_tests, skipped_tests, flaky_tests, duration_ms)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+          [
+            testRunId,
+            suiteName,
+            suite.filePath,
+            suite.totalTests,
+            suite.passedTests,
+            suite.failedTests,
+            suite.skippedTests,
+            suite.flakyTests,
+            suite.durationMs
+          ]
+        );
+      }
+
+      // Save individual test case results
+      for (const testCase of detailedResults.cases) {
+        await pool.query(
+          `INSERT INTO test_run_cases
+           (test_run_id, suite_name, test_name, file_path, line_number, status, duration_ms, error_message)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [
+            testRunId,
+            testCase.suiteName,
+            testCase.testName,
+            testCase.filePath,
+            testCase.lineNumber,
+            testCase.status,
+            testCase.durationMs,
+            testCase.errorMessage
+          ]
+        );
+      }
+
+      logger.info(`✅ Saved detailed results for test run ${testRunId}: ${detailedResults.suites.size} suites, ${detailedResults.cases.length} test cases`);
+    } catch (error) {
+      logger.error('Error saving detailed test results:', error);
+    }
   }
 
   /**
