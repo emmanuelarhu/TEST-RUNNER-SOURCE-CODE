@@ -37,6 +37,10 @@ export const executionApi = {
   getExecutionHistory: (testCaseId: string, limit?: number) => apiClient.get<ApiResponse<TestExecution[]>>(`/executions/test-case/${testCaseId}/history`, { params: { limit } }),
   getTestRun: (runId: string) => apiClient.get<TestRun>(`/executions/run/${runId}`),
   getProjectTestRuns: (projectId: string, limit?: number) => apiClient.get<ApiResponse<TestRun[]>>(`/executions/project/${projectId}/runs`, { params: { limit } }),
+  getProjectTestRunsDetailed: (projectId: string, limit?: number, offset?: number) => apiClient.get<any>(`/executions/project/${projectId}/runs/detailed`, { params: { limit, offset } }),
+  getTestRunDetailed: (runId: string) => apiClient.get<any>(`/executions/run/${runId}/detailed`),
+  getTestRunSuites: (runId: string) => apiClient.get<any>(`/executions/run/${runId}/suites`),
+  getTestRunCases: (runId: string, status?: string, suiteName?: string) => apiClient.get<any>(`/executions/run/${runId}/cases`, { params: { status, suiteName } }),
 };
 
 export const testDiscoveryApi = {
